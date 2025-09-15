@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-background text-text antialiased;
+}
+
+/* helpers */
+.container {
+  @apply mx-auto max-w-5xl px-page;
+}
+.card {
+  @apply bg-card border border-border rounded p-4 shadow-sm;
+}
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded font-medium;
+}
+.btn-primary {
+  @apply btn bg-primary text-white hover:opacity-90;
+}
+.btn-outline {
+  @apply btn border border-border text-text bg-white hover:bg-gray-50;
+}
+.input {
+  @apply border border-border rounded px-3 py-2 bg-white;
+}
+.label {
+  @apply text-sm text-subtext;
+}
