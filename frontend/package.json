@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.32.0",
     "clsx": "^2.1.1",
     "convex": "^1.27.0",
+    "convex-helpers": "^0.1.104",
     "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0"
