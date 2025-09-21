@@ -4,7 +4,7 @@
 # dependencies
 /node_modules
 
-# other env files (keep secrets out of git)
+# other env files
 .env
 .env.*.local
 
