@@ -1,0 +1,29 @@
+import { SignUpButton } from "@clerk/nextjs";
+
+export default function RegisterDonater() {
+  return (
+    <section className="grid gap-4 max-w-md">
+      <h2 className="text-2xl font-semibold">Register as Donor</h2>
+      <div className="card grid gap-4 p-6">
+        <p className="text-subtext">Create an account to start donating food.</p>
+        <form className="grid gap-3">
+          <label className="grid gap-1">
+            <span className="label">Address</span>
+            <input type="text" className="input" placeholder="Enter your address" />
+          </label>
+          <label className="grid gap-1">
+            <span className="label">Company Name</span>
+            <input type="text" className="input" placeholder="Enter your company name" />
+          </label>
+          <label className="grid gap-1">
+            <span className="label">Organization Number</span>
+            <input type="text" className="input" placeholder="Enter your organization number" />
+          </label>
+          <SignUpButton mode="modal" forceRedirectUrl="/">
+            <button type="button" className="btn-primary">Open register</button>
+          </SignUpButton>
+        </form>
+      </div>
+    </section>
+  );
+}

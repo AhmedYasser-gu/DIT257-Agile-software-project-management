@@ -1,6 +1,7 @@
 "use client";
 
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import Link from "next/link";
+import { SignInButton } from "@clerk/nextjs";
 
 export default function Login() {
   return (
@@ -10,11 +11,11 @@ export default function Login() {
         <p className="text-subtext">Access your dashboard and post donations.</p>
         <div className="flex gap-2">
           <SignInButton mode="modal" forceRedirectUrl="/">
-            <button className="btn-primary">Open login</button>
+            <button className="btn-primary">Login</button>
           </SignInButton>
-          <SignUpButton mode="modal" forceRedirectUrl="/">
-            <button className="btn-outline">Register instead</button>
-          </SignUpButton>
+          <Link href="/login/register">
+            <button className="btn-outline">Register</button>
+          </Link>
         </div>
       </div>
     </section>

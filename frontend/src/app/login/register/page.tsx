@@ -1,6 +1,6 @@
 "use client";
 
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import Link from "next/link";
 
 export default function Register() {
   return (
@@ -9,12 +9,12 @@ export default function Register() {
       <div className="card grid gap-4 p-6">
         <p className="text-subtext">Create an account to start donating or claiming food.</p>
         <div className="flex gap-2">
-          <SignUpButton mode="modal" forceRedirectUrl="/">
-            <button className="btn-primary">Open register</button>
-          </SignUpButton>
-          <SignInButton mode="modal" forceRedirectUrl="/">
-            <button className="btn-outline">Login instead</button>
-          </SignInButton>
+          <Link href="/login/registerdonor">
+            <button className="btn-primary">Register as Donor</button>
+          </Link>
+          <Link href="/login/registerreciver">
+            <button className="btn-outline">Register as Receiver</button>
+          </Link>
         </div>
       </div>
     </section>
