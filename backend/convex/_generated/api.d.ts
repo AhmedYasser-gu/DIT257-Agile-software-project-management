@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as crons from "../crons.js";
 import type * as functions_createDonation from "../functions/createDonation.js";
+import type * as functions_createUser from "../functions/createUser.js";
 import type * as functions_expireDonations from "../functions/expireDonations.js";
 
 /**
@@ -28,6 +29,7 @@ import type * as functions_expireDonations from "../functions/expireDonations.js
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   "functions/createDonation": typeof functions_createDonation;
+  "functions/createUser": typeof functions_createUser;
   "functions/expireDonations": typeof functions_expireDonations;
 }>;
 export declare const api: FilterApi<

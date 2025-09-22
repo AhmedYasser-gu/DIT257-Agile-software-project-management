@@ -31,18 +31,21 @@ export default defineSchema({
     last_name: v.string(),
     address: v.string(),
     phone: v.string(),
+    clerk_id: v.string(),
   }),
 
   donors: defineTable({
     business_name: v.string(),
     business_email: v.string(),
     business_phone: v.string(),
+    clerk_id: v.string(),
     verified: v.boolean(),
   }),
 
   userInDonor: defineTable({
     user_id: v.id("users"),
     donors_id: v.id("donors"),
+    clerk_id: v.id("users"),
     owner: v.boolean(),
   }),
 
@@ -56,17 +59,20 @@ export default defineSchema({
     contact_phone: v.string(),
     contact_email: v.string(),
     verified: v.boolean(),
+    clerk_id: v.string(),
   }),
 
   userInVolunteer: defineTable({
     user_id: v.id("users"),
     volunteer_id: v.id("volunteers"),
+    clerk_id: v.id("users"),
     owner: v.boolean(),
   }),
 
   individuals: defineTable({
     user_id: v.id("users"),
     food_allergy: v.string(),
+    clerk_id: v.id("users"),
   }),
 
   donations: defineTable({
