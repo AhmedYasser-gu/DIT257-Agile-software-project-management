@@ -1,6 +1,6 @@
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
-
+//we can add more crons here if needed
 const crons = cronJobs();
 
 crons.daily(
