@@ -2,8 +2,12 @@
 
 import NavLink from "@/components/NavLink/NavLink";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 
 export default function NavBar() {
+  const pathname = usePathname();
+  const hide = pathname?.startsWith("/login/registerdonor") || pathname?.startsWith("/login/registerreciver");
+  if (hide) return null;
   const links: { href: string; label: string; exact?: boolean }[] = [
     { href: "/", label: "Home", exact: true },
     { href: "/explore", label: "Explore" },

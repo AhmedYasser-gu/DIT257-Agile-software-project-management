@@ -1,23 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { SignInButton } from "@clerk/nextjs";
+import Access from "@/components/Access/Access";
+import { SignIn } from "@clerk/nextjs";
+import { useState } from "react";
 
 export default function Login() {
+  const [open, setOpen] = useState(false);
   return (
-    <section className="grid gap-4 max-w-md">
-      <h2 className="text-2xl font-semibold">Login</h2>
-      <div className="card grid gap-4 p-6">
-        <p className="text-subtext">Access your dashboard and post donations.</p>
-        <div className="flex gap-2">
-          <SignInButton mode="modal" forceRedirectUrl="/">
-            <button className="btn-primary">Login</button>
-          </SignInButton>
-          <Link href="/login/register">
-            <button className="btn-outline">Register</button>
-          </Link>
+    <Access allowIfLoggedOut>
+      <section className="grid gap-4 max-w-md">
+        <h2 className="text-2xl font-semibold">Login</h2>
+        <div className="card grid gap-4 p-6">
+          <p className="text-subtext">Access your dashboard and post donations.</p>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={() => setOpen(true)}>Login</button>
+            <Link href="/login/register">
+              <button className="btn-outline">Register</button>
+            </Link>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
+            <SignIn routing="hash" signUpUrl="/login/register" afterSignInUrl="/" transferable={false} waitlistUrl="/login/register"/>
+        </div>
+      )}
+    </Access>
   );
 }

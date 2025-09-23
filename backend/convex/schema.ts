@@ -25,54 +25,67 @@ const claimedStatusValidator = v.union(
   v.literal(ClaimedStatus.PickedUp)
 )
 
+enum UserType {
+  Donor = "DONOR",
+  Receiver = "RECEIVER",
+}
+
+const userTypeValidator = v.union(
+  v.literal("donor"),
+  v.literal("receiver"),
+)
+
 export default defineSchema({
   users: defineTable({
     first_name: v.string(),
     last_name: v.string(),
-    address: v.string(),
     phone: v.string(),
+    user_type: userTypeValidator,
     clerk_id: v.string(),
-  }),
+  })
+    .index("by_clerk_id", ["clerk_id"]),
 
   donors: defineTable({
     business_name: v.string(),
     business_email: v.string(),
     business_phone: v.string(),
-    clerk_id: v.string(),
+    address: v.string(),
     verified: v.boolean(),
   }),
 
   userInDonor: defineTable({
     user_id: v.id("users"),
     donors_id: v.id("donors"),
-    clerk_id: v.id("users"),
     owner: v.boolean(),
-  }),
-
+  })
+    .index("by_user", ["user_id"]) 
+    .index("by_donor", ["donors_id"]),
+  
   recievers: defineTable({
+    user_id: v.id("users"),
     individuals_id: v.optional(v.id("individuals")),
-    volunteer_id: v.optional(v.id("volunteers")),
-  }),
+    charity_id: v.optional(v.id("charities")),
+  })
+    .index("by_user_id", ["user_id"]),
 
-  volunteers: defineTable({
-    volunteer_name: v.string(),
+  charities: defineTable({
+    charity_name: v.string(),
     contact_phone: v.string(),
     contact_email: v.string(),
+    address: v.string(),
     verified: v.boolean(),
-    clerk_id: v.string(),
   }),
-
-  userInVolunteer: defineTable({
+  
+  userInCharity: defineTable({
     user_id: v.id("users"),
-    volunteer_id: v.id("volunteers"),
-    clerk_id: v.id("users"),
+    charity_id: v.id("charities"),
     owner: v.boolean(),
-  }),
+  })
+    .index("by_user", ["user_id"]) 
+    .index("by_charity", ["charity_id"]),
 
   individuals: defineTable({
-    user_id: v.id("users"),
-    food_allergy: v.string(),
-    clerk_id: v.id("users"),
+    food_allergy: v.optional(v.string()),
   }),
 
   donations: defineTable({
