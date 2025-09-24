@@ -1,19 +1,46 @@
 "use client";
 
 import NavLink from "@/components/NavLink/NavLink";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convexApi";
 
 export default function NavBar() {
   const pathname = usePathname();
   const hide = pathname?.startsWith("/login/registerdonor") || pathname?.startsWith("/login/registerreciver");
   if (hide) return null;
-  const links: { href: string; label: string; exact?: boolean }[] = [
+  const { userId } = useAuth();
+  const status = useQuery(api.functions.createUser.getRegistrationStatus, userId ? { clerk_id: userId } : "skip");
+
+  const linksLoggedOut: { href: string; label: string; exact?: boolean }[] = [
+    { href: "/", label: "Home", exact: true },
+    { href: "/explore", label: "Explore" },
+  ];
+  const linksDonor: { href: string; label: string; exact?: boolean }[] = [
     { href: "/", label: "Home", exact: true },
     { href: "/explore", label: "Explore" },
     { href: "/donate", label: "Post Donation" },
     { href: "/dashboard", label: "Dashboard" },
   ];
+  const linksReceiver: { href: string; label: string; exact?: boolean }[] = [
+    { href: "/", label: "Home", exact: true },
+    { href: "/explore", label: "Explore" },
+    { href: "/dashboard", label: "Dashboard" },
+  ];
+
+  let links: { href: string; label: string; exact?: boolean }[] = linksLoggedOut;
+  if (userId) {
+    if (status === undefined) {
+      links = [];
+    } else if (status?.registered && status?.userType === "donor") {
+      links = linksDonor;
+    } else if (status?.registered && status?.userType === "receiver") {
+      links = linksReceiver;
+    } else {
+      links = linksLoggedOut;
+    }
+  }
 
   return (
     <header className="border-b border-border bg-card">

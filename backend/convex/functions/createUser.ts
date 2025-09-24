@@ -281,3 +281,201 @@ export const createDonorOrganization = mutation({
     return { donorId };
   },
 });
+
+// Query: fetch full profile by Clerk ID (user + role-specific data)
+export const getProfileByClerkId = query({
+  args: { clerk_id: v.string() },
+  handler: async ({ db }, { clerk_id }) => {
+    const user = await db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerk_id", clerk_id))
+      .first();
+    if (!user) return null;
+
+    // Determine role via memberships/links
+    const donorMembership = await db
+      .query("userInDonor")
+      .withIndex("by_user", (q: any) => q.eq("user_id", user._id))
+      .first();
+
+    if (donorMembership) {
+      const donor = await db.get(donorMembership.donors_id);
+      return {
+        user: {
+          _id: user._id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          user_type: user.user_type,
+        },
+        type: "donor" as const,
+        donor_owner: !!donorMembership.owner,
+        donor: donor && {
+          _id: donor._id,
+          business_name: donor.business_name,
+          business_email: donor.business_email,
+          business_phone: donor.business_phone,
+          address: donor.address,
+          verified: donor.verified,
+        },
+      };
+    }
+
+    const receiver = await db
+      .query("recievers")
+      .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
+      .first();
+
+    if (receiver) {
+      const individual = receiver.individuals_id ? await db.get(receiver.individuals_id) : null;
+      const charity = receiver.charity_id ? await db.get(receiver.charity_id) : null;
+      // Determine charity ownership
+      let charityOwner = false;
+      if (receiver.charity_id) {
+        const membership = await db
+          .query("userInCharity")
+          .withIndex("by_user", (q: any) => q.eq("user_id", user._id))
+          .first();
+        if (membership && membership.charity_id === receiver.charity_id && membership.owner) {
+          charityOwner = true;
+        }
+      }
+      return {
+        user: {
+          _id: user._id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          user_type: user.user_type,
+        },
+        type: "receiver" as const,
+        charity_owner: charityOwner,
+        receiver: {
+          _id: receiver._id,
+          individuals_id: receiver.individuals_id ?? null,
+          charity_id: receiver.charity_id ?? null,
+          individual: individual && { _id: individual._id, food_allergy: individual.food_allergy ?? null },
+          charity:
+            charity && {
+              _id: charity._id,
+              charity_name: charity.charity_name,
+              contact_phone: charity.contact_phone,
+              contact_email: charity.contact_email,
+              address: charity.address,
+              verified: charity.verified,
+            },
+        },
+      };
+    }
+
+    return {
+      user: {
+        _id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone,
+        user_type: user.user_type,
+      },
+      type: null,
+    } as const;
+  },
+});
+
+// Mutation: update profile (user + role-specific data)
+export const updateProfile = mutation({
+  args: {
+    user_id: v.id("users"),
+    // Always allowed
+    first_name: v.optional(v.string()),
+    last_name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+
+    // Donor-specific (if editing as donor)
+    donor_id: v.optional(v.id("donors")),
+    business_name: v.optional(v.string()),
+    business_email: v.optional(v.string()),
+    business_phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+
+    // Receiver-specific
+    receiver_id: v.optional(v.id("recievers")),
+    individuals_id: v.optional(v.id("individuals")),
+    charity_id: v.optional(v.id("charities")),
+    food_allergy: v.optional(v.string()),
+
+    // Charity organization fields (editable only by owners)
+    charity_name: v.optional(v.string()),
+    charity_contact_phone: v.optional(v.string()),
+    charity_contact_email: v.optional(v.string()),
+    charity_address: v.optional(v.string()),
+  },
+  handler: async ({ db }, args) => {
+    // Update base user fields
+    const { user_id, first_name, last_name, phone } = args;
+    const updates: any = {};
+    if (first_name !== undefined) updates.first_name = first_name;
+    if (last_name !== undefined) updates.last_name = last_name;
+    if (phone !== undefined) updates.phone = phone;
+    if (Object.keys(updates).length) {
+      await db.patch(user_id, updates);
+    }
+
+    // Donor-specific
+    if (args.donor_id) {
+      // Ensure the user is an owner of this donor organization before editing its fields
+      const membership = await db
+        .query("userInDonor")
+        .withIndex("by_user", (q: any) => q.eq("user_id", user_id))
+        .first();
+      if (!membership || membership.donors_id !== args.donor_id || !membership.owner) {
+        throw new Error("Not authorized to edit donor organization");
+      }
+      const donorUpdates: any = {};
+      if (args.business_name !== undefined) donorUpdates.business_name = args.business_name;
+      if (args.business_email !== undefined) donorUpdates.business_email = args.business_email;
+      if (args.business_phone !== undefined) donorUpdates.business_phone = args.business_phone;
+      if (args.address !== undefined) donorUpdates.address = args.address;
+      if (Object.keys(donorUpdates).length) {
+        await db.patch(args.donor_id, donorUpdates);
+      }
+    }
+
+    // Receiver-specific
+    if (args.receiver_id) {
+      // Verify receiver belongs to this user
+      const receiverDoc = await db.get(args.receiver_id);
+      if (!receiverDoc || receiverDoc.user_id !== user_id) {
+        throw new Error("Not authorized to edit receiver profile");
+      }
+      // Update individual if present
+      if (args.individuals_id && args.food_allergy !== undefined) {
+        await db.patch(args.individuals_id, { food_allergy: args.food_allergy });
+      }
+      // Update charity details when owner
+      if (args.charity_id && (
+        args.charity_name !== undefined ||
+        args.charity_contact_phone !== undefined ||
+        args.charity_contact_email !== undefined ||
+        args.charity_address !== undefined
+      )) {
+        const membership = await db
+          .query("userInCharity")
+          .withIndex("by_user", (q: any) => q.eq("user_id", user_id))
+          .first();
+        if (!membership || membership.charity_id !== args.charity_id || !membership.owner) {
+          throw new Error("Not authorized to edit charity organization");
+        }
+        const charityUpdates: any = {};
+        if (args.charity_name !== undefined) charityUpdates.charity_name = args.charity_name;
+        if (args.charity_contact_phone !== undefined) charityUpdates.contact_phone = args.charity_contact_phone;
+        if (args.charity_contact_email !== undefined) charityUpdates.contact_email = args.charity_contact_email;
+        if (args.charity_address !== undefined) charityUpdates.address = args.charity_address;
+        if (Object.keys(charityUpdates).length) {
+          await db.patch(args.charity_id, charityUpdates);
+        }
+      }
+    }
+
+    return { ok: true } as const;
+  },
+});

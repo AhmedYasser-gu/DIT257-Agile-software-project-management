@@ -30,51 +30,51 @@ export default function Access({
     userId ? { clerk_id: userId } : "skip"
   );
 
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    // Logged out and only allowed when logged out
-    if (!userId && allowIfLoggedOut) {
-      return;
-    }
-
-    // Require auth but missing
-    if (requireAuth && !userId) {
-      router.replace("/login");
-      return;
-    }
-
-    // If logged in and page is only for logged-out users
-    if (userId && allowIfLoggedOut) {
-      router.replace("/");
-      return;
-    }
-
-    // Registration status checks (only when logged in)
-    if (userId) {
-      if (requireUnregistered) {
-        if (status === undefined) return; // loading
-        if (status?.registered) {
-          router.replace("/");
-          return;
-        }
-      }
-
-      if (allowUserTypes && allowUserTypes.length > 0) {
-        if (status === undefined) return; // loading
-        const ok = status?.registered && status?.userType && allowUserTypes.includes(status.userType as UserType);
-        if (!ok) {
-          router.replace("/");
-          return;
-        }
-      }
-    }
-  }, [userId, isLoaded, requireAuth, allowIfLoggedOut, requireUnregistered, allowUserTypes, status, router]);
-
-  // Simple loading state while auth or status loads for guarded cases
+  // Determine gating/loading and redirect rules synchronously to avoid content flash
   const needsStatus = (requireUnregistered || (allowUserTypes && allowUserTypes.length > 0)) && !!userId;
-  const isLoading = !isLoaded || (needsStatus && status === undefined);
-  if (isLoading) {
+  const isChecking = !isLoaded || (needsStatus && status === undefined);
+
+  let notAllowed = false;
+  let redirectTo: string | null = null;
+
+  if (isLoaded && !isChecking) {
+    if (!userId) {
+      if (requireAuth) {
+        notAllowed = true;
+        redirectTo = "/login";
+      } else if (!allowIfLoggedOut) {
+        // Public page; allowed
+      }
+    } else {
+      if (allowIfLoggedOut) {
+        notAllowed = true;
+        redirectTo = "/";
+      } else {
+        if (requireUnregistered && status) {
+          if (status.registered) {
+            notAllowed = true;
+            redirectTo = "/";
+          }
+        }
+        if (!notAllowed && allowUserTypes && allowUserTypes.length > 0 && status) {
+          const ok = !!status.registered && !!status.userType && allowUserTypes.includes(status.userType as UserType);
+          if (!ok) {
+            notAllowed = true;
+            redirectTo = "/";
+          }
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (redirectTo) {
+      router.replace(redirectTo);
+    }
+  }, [redirectTo, router]);
+
+  // While checking or when redirecting, render only a minimal placeholder
+  if (isChecking || notAllowed) {
     return (
       <section className="grid gap-4 max-w-md">
         <div className="card grid gap-4 p-6">
