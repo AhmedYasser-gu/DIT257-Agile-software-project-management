@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 
 export enum ListingStatus {
   OPEN = "OPEN",
@@ -32,25 +40,49 @@ interface StatCardProps {
   unit?: string;
   colorFrom: string;
   colorTo: string;
+  data: { day: string; value: number }[];
 }
 
-function StatCard({ title, current, previous, unit, colorFrom, colorTo }: StatCardProps) {
+function StatCard({ title, current, previous, unit, colorFrom, colorTo, data }: StatCardProps) {
   const { percent, trend } = calcChange(current, previous);
   const isUp = trend === "up";
 
   return (
-    <div className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm`}>
-      <h3 className="text-sm text-gray-700">{title}</h3>
-      <p className="text-2xl font-bold">
-        {current} {unit}
-      </p>
-      <p className="text-xs text-gray-600">Prev: {previous} {unit}</p>
-      <p
-        className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"
-          }`}
-      >
-        {isUp ? "▲" : "▼"} {percent}%
-      </p>
+    <div className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm flex flex-col`}>
+      <div>
+        <h3 className="text-sm text-gray-700">{title}</h3>
+        <p className="text-2xl font-bold">
+          {current} {unit}
+        </p>
+        <p className="text-xs text-gray-600">Prev: {previous} {unit}</p>
+        <p
+          className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"
+            }`}
+        >
+          {isUp ? "▲" : "▼"} {percent}%
+        </p>
+      </div>
+
+      {/* Chart */}
+      <div className="mt-3 h-20">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <XAxis dataKey="day" hide />
+            <YAxis hide />
+            <Tooltip
+              cursor={{ stroke: "#ccc", strokeDasharray: "5 5" }}
+              contentStyle={{ fontSize: "12px" }}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#2563eb"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -127,10 +159,6 @@ function DatePickerMenu({ setSelectedRange, closeMenu }: DatePickerMenuProps) {
 
 // ---- Dashboard ----
 export default function Dashboard() {
-  const [showClaimed, setShowClaimed] = useState(false);
-  const [showOpen, setShowOpen] = useState(true);
-  const [showExpired, setShowExpired] = useState(false);
-
   const [selectedPreviousRange, setSelectedPreviousRange] = useState<{ start: string; end: string }>({
     start: "2025-09-08",
     end: "2025-09-15",
@@ -140,17 +168,26 @@ export default function Dashboard() {
     end: "2025-09-22",
   });
 
+  const [showClaimed, setShowClaimed] = useState(false);
+  const [showOpen, setShowOpen] = useState(true);
+  const [showExpired, setShowExpired] = useState(false);
+
+
   // fake stats for demo
   const stats = {
-    created: { current: 42, previous: 35 },
-    claimed: { current: 30, previous: 28 },
-    expired: { current: 5, previous: 10 },
-    quantity: { current: 86, previous: 70 },
+    created: { current: 42, previous: 35, daily: [5, 6, 7, 5, 6, 7, 6] },
+    claimed: { current: 30, previous: 28, daily: [4, 5, 3, 4, 5, 4, 5] },
+    expired: { current: 5, previous: 10, daily: [1, 0, 1, 1, 0, 1, 1] },
+    quantity: { current: 86, previous: 70, daily: [10, 12, 15, 11, 13, 12, 13] },
   };
+
+  // convert daily stats into chart data
+  const makeChartData = (arr: number[]) =>
+    arr.map((val, idx) => ({ day: `D${idx + 1}`, value: val }));
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-12">
-      {/* Listings Section */}
+      {/* Listings Section (same as before) */}
       <section className="space-y-6">
         <h2 className="text-3xl font-bold border-b pb-2">Listings</h2>
         <Link
@@ -159,7 +196,6 @@ export default function Dashboard() {
         >
           📅 Today <span className="text-gray-500">(2025-09-24)</span>
         </Link>
-
         {/* Open Listings */}
         <div
           className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
@@ -282,11 +318,12 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <StatCard
             title="Listings created"
             current={stats.created.current}
             previous={stats.created.previous}
+            data={makeChartData(stats.created.daily)}
             colorFrom="from-blue-50"
             colorTo="to-blue-100"
           />
@@ -294,6 +331,7 @@ export default function Dashboard() {
             title="Listings claimed"
             current={stats.claimed.current}
             previous={stats.claimed.previous}
+            data={makeChartData(stats.claimed.daily)}
             colorFrom="from-green-50"
             colorTo="to-green-100"
           />
@@ -301,6 +339,7 @@ export default function Dashboard() {
             title="Listings expired"
             current={stats.expired.current}
             previous={stats.expired.previous}
+            data={makeChartData(stats.expired.daily)}
             colorFrom="from-red-50"
             colorTo="to-red-100"
           />
@@ -309,6 +348,7 @@ export default function Dashboard() {
             current={stats.quantity.current}
             previous={stats.quantity.previous}
             unit="portions"
+            data={makeChartData(stats.quantity.daily)}
             colorFrom="from-purple-50"
             colorTo="to-purple-100"
           />
