@@ -17,6 +17,45 @@ const items = [
   { id: 4, title: "Hamburgers", qty: "2 portions", status: ListingStatus.EXPIRED, posted: "Today, 2:00 PM", pickup: "5 PM - 7 PM" },
 ];
 
+// ---- Helpers for stats ----
+function calcChange(current: number, previous: number) {
+  if (previous === 0) return { percent: 100, trend: "up" };
+  const diff = current - previous;
+  const percent = Math.round((diff / previous) * 100);
+  return { percent: Math.abs(percent), trend: diff >= 0 ? "up" : "down" };
+}
+
+interface StatCardProps {
+  title: string;
+  current: number;
+  previous: number;
+  unit?: string;
+  colorFrom: string;
+  colorTo: string;
+}
+
+function StatCard({ title, current, previous, unit, colorFrom, colorTo }: StatCardProps) {
+  const { percent, trend } = calcChange(current, previous);
+  const isUp = trend === "up";
+
+  return (
+    <div className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm`}>
+      <h3 className="text-sm text-gray-700">{title}</h3>
+      <p className="text-2xl font-bold">
+        {current} {unit}
+      </p>
+      <p className="text-xs text-gray-600">Prev: {previous} {unit}</p>
+      <p
+        className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"
+          }`}
+      >
+        {isUp ? "▲" : "▼"} {percent}%
+      </p>
+    </div>
+  );
+}
+
+// ---- Period Buttons ----
 interface PeriodButtonProps {
   label: string;
   selectedRange: { start: string; end: string };
@@ -28,19 +67,18 @@ function PeriodButton({ label, selectedRange, setSelectedRange }: PeriodButtonPr
 
   return (
     <div>
-      <div className="text-1xl font-semibold">{label}</div>
-      <div className="relative">
+      <div className="text-sm font-semibold text-gray-700">{label}</div>
+      <div className="relative mt-1">
         <button
           onClick={() => setShowDatePicker(!showDatePicker)}
-          className="bg-info hover:bg-opacity-80 text-white font-medium px-4 py-2 rounded mt-2"
+          className="inline-flex items-center rounded-full border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
         >
-          {selectedRange.start} - {selectedRange.end}
+          {selectedRange.start} → {selectedRange.end}
         </button>
 
         {showDatePicker && (
-          <div className="absolute z-50 mt-2 p-4 bg-white border rounded shadow-lg">
+          <div className="absolute z-50 mt-2 w-48 p-3 bg-white border rounded-lg shadow-lg">
             <DatePickerMenu
-              selectedRange={selectedRange}
               setSelectedRange={setSelectedRange}
               closeMenu={() => setShowDatePicker(false)}
             />
@@ -52,12 +90,11 @@ function PeriodButton({ label, selectedRange, setSelectedRange }: PeriodButtonPr
 }
 
 interface DatePickerMenuProps {
-  selectedRange: { start: string; end: string };
   setSelectedRange: (range: { start: string; end: string }) => void;
   closeMenu: () => void;
 }
 
-function DatePickerMenu({ selectedRange, setSelectedRange, closeMenu }: DatePickerMenuProps) {
+function DatePickerMenu({ setSelectedRange, closeMenu }: DatePickerMenuProps) {
   const presets = [
     { label: "Last 7 Days", range: { start: "2025-09-16", end: "2025-09-22" } },
     { label: "Last 15 Days", range: { start: "2025-09-08", end: "2025-09-22" } },
@@ -65,11 +102,11 @@ function DatePickerMenu({ selectedRange, setSelectedRange, closeMenu }: DatePick
   ];
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-1">
       {presets.map((p) => (
         <button
           key={p.label}
-          className="text-left px-2 py-1 hover:bg-gray-100 rounded"
+          className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-gray-100"
           onClick={() => {
             setSelectedRange(p.range);
             closeMenu();
@@ -79,7 +116,7 @@ function DatePickerMenu({ selectedRange, setSelectedRange, closeMenu }: DatePick
         </button>
       ))}
       <button
-        className="mt-2 px-2 py-1 bg-pink-500 text-white rounded"
+        className="mt-2 w-full rounded-md bg-blue-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600"
         onClick={closeMenu}
       >
         Apply
@@ -88,171 +125,195 @@ function DatePickerMenu({ selectedRange, setSelectedRange, closeMenu }: DatePick
   );
 }
 
+// ---- Dashboard ----
 export default function Dashboard() {
   const [showClaimed, setShowClaimed] = useState(false);
   const [showOpen, setShowOpen] = useState(true);
   const [showExpired, setShowExpired] = useState(false);
 
   const [selectedPreviousRange, setSelectedPreviousRange] = useState<{ start: string; end: string }>({
-    start: "2025-09-16",
-    end: "2025-09-22",
+    start: "2025-09-08",
+    end: "2025-09-15",
   });
   const [selectedCurrentRange, setSelectedCurrentRange] = useState<{ start: string; end: string }>({
     start: "2025-09-16",
     end: "2025-09-22",
   });
 
+  // fake stats for demo
+  const stats = {
+    created: { current: 42, previous: 35 },
+    claimed: { current: 30, previous: 28 },
+    expired: { current: 5, previous: 10 },
+    quantity: { current: 86, previous: 70 },
+  };
+
   return (
-    <div className="grid gap-10">
-      <section className="grid gap-4">
-        <h2 className="text-3xl font-bold border-b border-gray-200 pb-2">
-          Our Listings Today
-        </h2>
+    <div className="max-w-5xl mx-auto px-6 py-10 space-y-12">
+      {/* Listings Section */}
+      <section className="space-y-6">
+        <h2 className="text-3xl font-bold border-b pb-2">Listings</h2>
+        <Link
+          href={`/explore/`}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        >
+          📅 Today <span className="text-gray-500">(2025-09-24)</span>
+        </Link>
+
+        {/* Open Listings */}
         <div
-          className="flex items-center space-x-2 cursor-pointer"
+          className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
           onClick={() => setShowOpen(!showOpen)}
         >
-
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            transform="rotate(270)"
-            className={`w-4 h-4 transition-transform duration-300 ${showOpen ? 'rotate-0' : 'rotate-270'}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-          </svg>
-          <h2 className="text-xl font-bold select-none">Open ({items.filter(i => i.status == ListingStatus.OPEN).length})</h2>
+          <h3 className="text-lg font-semibold">
+            Open ({items.filter((i) => i.status === ListingStatus.OPEN).length})
+          </h3>
+          <span className={`transform transition-transform ${showOpen ? "rotate-180" : "rotate-0"}`}>
+            ▼
+          </span>
         </div>
-        {showOpen && items
-          .filter(i => i.status == ListingStatus.OPEN)
-          .map(i => (
-            // The parent div no longer has flex properties.
-            <div key={i.id} className="card">
-              <div>
-                <div className="font-medium">{i.title}</div>
-                <div className="text-sm text-subtext">{i.qty}</div>
-                <div className="text-sm text-subtext">Posted: {i.posted}</div>
-                <div className="text-sm text-subtext">Pickup: {i.pickup}</div>
-              </div>
-              {/* The button is now a separate element on a new line */}
-              <div className="mt-2 flex space-x-2 text-sm">
-                <Link
-                  href={`/explore/${i.id}`}
-                  className="bg-info hover:bg-opacity-80 text-white font-medium px-4 py-2 rounded"
+        {showOpen && (
+          <div className="grid gap-3">
+            {items
+              .filter((i) => i.status === ListingStatus.OPEN)
+              .map((i) => (
+                <div
+                  key={i.id}
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
                 >
-                  Edit
-                </Link>
-                <Link
-                  href={`/explore/${i.id}`}
-                  className="bg-error hover:bg-opacity-80 text-white font-medium px-4 py-2 rounded"
-                >
-                  Cancel listing
-                </Link>
-              </div>
-            </div>
-          ))}
+                  <h4 className="text-lg font-semibold">{i.title}</h4>
+                  <p className="text-sm text-gray-500">{i.qty}</p>
+                  <p className="text-sm text-gray-500">Posted: {i.posted}</p>
+                  <p className="text-sm text-gray-500">Pickup: {i.pickup}</p>
+                  <div className="mt-3 flex gap-2">
+                    <Link
+                      href={`/explore/${i.id}`}
+                      className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600"
+                    >
+                      Edit
+                    </Link>
+                    <Link
+                      href={`/explore/${i.id}`}
+                      className="rounded-lg bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+                    >
+                      Cancel
+                    </Link>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Claimed Listings */}
         <div
-          className="flex items-center space-x-2 cursor-pointer"
+          className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
           onClick={() => setShowClaimed(!showClaimed)}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            transform="rotate(270)"
-            className={`w-4 h-4 transition-transform duration-300 ${showClaimed ? 'rotate-0' : 'rotate-270'}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-          </svg>
-          <h2 className="text-xl font-bold select-none">Claimed ({items.filter(i => i.status == ListingStatus.CLAIMED).length})</h2>
+          <h3 className="text-lg font-semibold">
+            Claimed ({items.filter((i) => i.status === ListingStatus.CLAIMED).length})
+          </h3>
+          <span className={`transform transition-transform ${showClaimed ? "rotate-180" : "rotate-0"}`}>
+            ▼
+          </span>
         </div>
-        {showClaimed && items
-          .filter(i => i.status == ListingStatus.CLAIMED)
-          .map(i => (
-            <div key={i.id} className="card">
-              <div>
-                <div className="font-medium">{i.title}</div>
-                <div className="text-sm text-subtext">{i.qty}</div>
-                <div className="text-sm text-subtext">Claimed by: {i.claimed_by}</div>
-                <div className="text-sm text-subtext">Claimed: {i.claimed_time}</div>
-              </div>
-            </div>
-          ))}
+        {showClaimed && (
+          <div className="grid gap-3">
+            {items
+              .filter((i) => i.status === ListingStatus.CLAIMED)
+              .map((i) => (
+                <div
+                  key={i.id}
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                >
+                  <h4 className="text-lg font-semibold">{i.title}</h4>
+                  <p className="text-sm text-gray-500">{i.qty}</p>
+                  <p className="text-sm text-gray-500">Claimed by: {i.claimed_by}</p>
+                  <p className="text-sm text-gray-500">Claimed: {i.claimed_time}</p>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Expired Listings */}
         <div
-          className="flex items-center space-x-2 cursor-pointer"
+          className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
           onClick={() => setShowExpired(!showExpired)}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            transform="rotate(270)"
-            className={`w-4 h-4 transition-transform duration-300 ${showExpired ? 'rotate-0' : 'rotate-270'}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-          </svg>
-          <h2 className="text-xl font-bold select-none">Expired ({items.filter(i => i.status == ListingStatus.EXPIRED).length})</h2>
+          <h3 className="text-lg font-semibold">
+            Expired ({items.filter((i) => i.status === ListingStatus.EXPIRED).length})
+          </h3>
+          <span className={`transform transition-transform ${showExpired ? "rotate-180" : "rotate-0"}`}>
+            ▼
+          </span>
         </div>
-        {showExpired && items
-          .filter(i => i.status == ListingStatus.EXPIRED)
-          .map(i => (
-            <div key={i.id} className="card">
-              <div>
-                <div className="font-medium">{i.title}</div>
-                <div className="text-sm text-subtext">{i.qty}</div>
-                <div className="text-sm text-subtext">Posted: {i.posted}</div>
-                <div className="text-sm text-subtext">Pickup: {i.pickup}</div>
-              </div>
-            </div>
-          ))}
+        {showExpired && (
+          <div className="grid gap-3">
+            {items
+              .filter((i) => i.status === ListingStatus.EXPIRED)
+              .map((i) => (
+                <div
+                  key={i.id}
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                >
+                  <h4 className="text-lg font-semibold">{i.title}</h4>
+                  <p className="text-sm text-gray-500">{i.qty}</p>
+                  <p className="text-sm text-gray-500">Posted: {i.posted}</p>
+                  <p className="text-sm text-gray-500">Pickup: {i.pickup}</p>
+                </div>
+              ))}
+          </div>
+        )}
       </section>
 
-      <section className="grid gap-4">
-        <h2 className="text-3xl font-bold border-b border-gray-200 pb-2">
-          Past Listings
-        </h2>
+      {/* Statistics Section */}
+      <section className="space-y-6">
+        <h2 className="text-3xl font-bold border-b pb-2">Statistics</h2>
 
-        <div>
-          <Link
-            href={`/explore/`}
-            className="bg-info hover:bg-opacity-80 text-white font-medium px-4 py-2 rounded"
-          >
-            Yesterday (2025-09-24)
-          </Link>
-        </div>
-      </section>
-
-      <section className="grid gap-4">
-        <h2 className="text-3xl font-bold border-b border-gray-200 pb-2">
-          Statistics
-        </h2>
-        <section className="mt-2 flex space-x-10">
+        <div className="flex gap-6">
           <PeriodButton
-            label="Current period (15 listings)"
+            label="Current period"
             selectedRange={selectedCurrentRange}
             setSelectedRange={setSelectedCurrentRange}
           />
-
           <PeriodButton
-            label="Previous period (17 listings)"
+            label="Previous period"
             selectedRange={selectedPreviousRange}
             setSelectedRange={setSelectedPreviousRange}
           />
-        </section>
+        </div>
 
-        <h2 className="text-xl font-bold select-none">Listings created</h2>
-        <h2 className="text-xl font-bold select-none">Listings claimed</h2>
-        <h2 className="text-xl font-bold select-none">Listings expired</h2>
-        <h2 className="text-xl font-bold select-none">Food quantity</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <StatCard
+            title="Listings created"
+            current={stats.created.current}
+            previous={stats.created.previous}
+            colorFrom="from-blue-50"
+            colorTo="to-blue-100"
+          />
+          <StatCard
+            title="Listings claimed"
+            current={stats.claimed.current}
+            previous={stats.claimed.previous}
+            colorFrom="from-green-50"
+            colorTo="to-green-100"
+          />
+          <StatCard
+            title="Listings expired"
+            current={stats.expired.current}
+            previous={stats.expired.previous}
+            colorFrom="from-red-50"
+            colorTo="to-red-100"
+          />
+          <StatCard
+            title="Food quantity"
+            current={stats.quantity.current}
+            previous={stats.quantity.previous}
+            unit="portions"
+            colorFrom="from-purple-50"
+            colorTo="to-purple-100"
+          />
+        </div>
       </section>
     </div>
-
   );
 }
