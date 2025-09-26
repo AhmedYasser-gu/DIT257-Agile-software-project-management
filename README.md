@@ -187,9 +187,9 @@ Each PR should:
 
 ## 👥 Team 3
 
-- Ahmed Yasser — [GitHub](https://github.com/AhmedYasser-gu)
+- Ahmed Yasser - [GitHub](https://github.com/AhmedYasser-gu)
 - Joakim Tuovinen
-- Hampus Ramsten
+- Hampus Ramsten - [GitHub](https://github.com/Zvampen04)
 - Rasmus Blomén
 - Loke Sandén
 - Hampus Johansson
