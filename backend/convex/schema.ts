@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 enum DonationStatus {
-  Available = "AVAILABE",
+  Available = "AVAILABLE",
   Claimed = "CLAIMED",
   PickedUp = "PICKEDUP",
   Expired = "EXPIRED"
@@ -96,6 +96,7 @@ export default defineSchema({
     pickup_window_start: v.string(),
     pickup_window_end: v.string(),
     status: donationStatusValidator,
+    category: v.string(),
   }),
 
   claims: defineTable({
