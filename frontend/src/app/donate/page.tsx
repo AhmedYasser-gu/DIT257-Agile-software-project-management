@@ -30,6 +30,8 @@ export default function Donate() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
+  const currentDateTime = new Date().toISOString().slice(0, 16);
+
   const createDonation = useMutation(api.functions.createDonation.createDonation);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -45,6 +47,15 @@ export default function Donate() {
       return;
     }
 
+    if (new Date(pickupWindowStart) < new Date(currentDateTime)) {
+      setErrorMessage('Pickup window start cannot be in the past.');
+      return;
+    }
+
+    if (new Date(pickupWindowEnd) < new Date(currentDateTime)) {
+      setErrorMessage('Pickup window end cannot be in the past.');
+      return;
+    }
     setErrorMessage('');
 
     const donationData = {
@@ -62,9 +73,18 @@ export default function Donate() {
       const newDonation = await createDonation(donationData);
       console.log('Donation created:', newDonation);
       setSuccessMessage('Donation successfully posted!');
+
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        setSuccessMessage('');
+        setDonorId('');
+        setTitle('');
+        setDescription('');
+        setQuantity(0);
+        setPickupWindowStart('');
+        setPickupWindowEnd('');
+        setCategory('Bakery');
+      }, 1500);
+
     } catch (error) {
       console.error('Error creating donation:', error);
     }
@@ -117,8 +137,8 @@ export default function Donate() {
             </select>
           </div>
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Pickup window start" requiredMark value={pickupWindowStart} onChange={(e) => setPickupWindowStart(e.target.value)} type="datetime-local"/>
-          <Input label="Pickup window end" requiredMark value={pickupWindowEnd} onChange={(e) => setPickupWindowEnd(e.target.value)} type="datetime-local"/>
+          <Input label="Pickup window start" requiredMark value={pickupWindowStart} onChange={(e) => setPickupWindowStart(e.target.value)} type="datetime-local" min={currentDateTime}/>
+          <Input label="Pickup window end" requiredMark value={pickupWindowEnd} onChange={(e) => setPickupWindowEnd(e.target.value)} type="datetime-local" min={currentDateTime}/>
         </div>
         {errorMessage && <p className="text-red-600">{errorMessage}</p>}
         {successMessage && <p className="text-green-600">{successMessage}</p>}
