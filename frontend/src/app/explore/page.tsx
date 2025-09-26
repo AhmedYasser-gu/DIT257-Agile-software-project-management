@@ -1,3 +1,4 @@
+import Access from "@/components/Access/Access";
 import Link from "next/link";
 
 const items = [
@@ -7,17 +8,19 @@ const items = [
 
 export default function Explore() {
   return (
-    <section className="grid gap-4">
-      <h2 className="text-2xl font-semibold">Nearby donations</h2>
-      {items.map(i => (
-        <div key={i.id} className="card flex items-center justify-between">
-          <div>
-            <div className="font-medium">{i.title}</div>
-            <div className="text-sm text-subtext">{i.qty} · {i.distance}</div>
+    <Access requireAuth allowUserTypes={["receiver"]}>
+      <section className="grid gap-4">
+        <h2 className="text-2xl font-semibold">Nearby donations</h2>
+        {items.map(i => (
+          <div key={i.id} className="card flex items-center justify-between">
+            <div>
+              <div className="font-medium">{i.title}</div>
+              <div className="text-sm text-subtext">{i.qty} · {i.distance}</div>
+            </div>
+            <Link className="btn-primary" href={`/explore/${i.id}`}>Claim</Link>
           </div>
-          <Link className="btn-primary" href={`/explore/${i.id}`}>Claim</Link>
-        </div>
-      ))}
-    </section>
+        ))}
+      </section>
+    </Access>
   );
 }
