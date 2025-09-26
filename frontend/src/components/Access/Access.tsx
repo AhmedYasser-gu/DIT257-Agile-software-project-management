@@ -13,6 +13,7 @@ type AccessProps = {
   allowIfLoggedOut?: boolean;
   allowUserTypes?: UserType[];
   requireUnregistered?: boolean;
+  redirectIfRegisteredTo?: string;
   children: ReactNode;
 };
 
@@ -21,6 +22,7 @@ export default function Access({
   allowIfLoggedOut,
   allowUserTypes,
   requireUnregistered,
+  redirectIfRegisteredTo,
   children,
 }: AccessProps) {
   const router = useRouter();
@@ -31,8 +33,11 @@ export default function Access({
   );
 
   // Determine gating/loading and redirect rules synchronously to avoid content flash
-  const needsStatus = (requireUnregistered || (allowUserTypes && allowUserTypes.length > 0)) && !!userId;
-  const isChecking = !isLoaded || (needsStatus && status === undefined);
+  // For registration pages (requireUnregistered), don't block UI while status loads.
+  // Only block when we need status for role-based gating via allowUserTypes.
+  const needsStatus = ((allowUserTypes && allowUserTypes.length > 0) ? true : false) && !!userId;
+  const deferAuthForRegistration = !!requireUnregistered;
+  const isChecking = (!deferAuthForRegistration && !isLoaded) || (needsStatus && status === undefined);
 
   let notAllowed = false;
   let redirectTo: string | null = null;
@@ -52,8 +57,8 @@ export default function Access({
       } else {
         if (requireUnregistered && status) {
           if (status.registered) {
-            notAllowed = true;
-            redirectTo = "/";
+            // On registration pages, do not block UI; just trigger a redirect.
+            redirectTo = redirectIfRegisteredTo || "/dashboard";
           }
         }
         if (!notAllowed && allowUserTypes && allowUserTypes.length > 0 && status) {
@@ -72,6 +77,16 @@ export default function Access({
       router.replace(redirectTo);
     }
   }, [redirectTo, router]);
+
+  useEffect(() => {
+    // Only auto-refresh while waiting on role/status checks.
+    // Avoid refreshing during redirects or on registration pages.
+    if (!(needsStatus && status === undefined)) return;
+    const id = setInterval(() => {
+      router.refresh();
+    }, 2000);
+    return () => clearInterval(id);
+  }, [needsStatus, status, router]);
 
   // While checking or when redirecting, render only a minimal placeholder
   if (isChecking || notAllowed) {

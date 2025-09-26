@@ -67,6 +67,7 @@ export default function ProfilePage() {
 
   const isLoading = userId && profile === undefined;
   const notRegistered = profile && (profile as any)?.type === null;
+  const accountType: string = original?.type === "donor" ? "Donor" : original?.type === "receiver" ? "Receiver" : "—";
 
   const onCancel = () => {
     if (!original) return;
@@ -212,6 +213,11 @@ export default function ProfilePage() {
                     label="Phone"
                     value={form.phone}
                     onChange={(v) => setForm({ ...form, phone: v })}
+                  />
+                  <Field
+                    label="Account type"
+                    value={accountType}
+                    readOnly
                   />
 
                   {(original as any)?.type === "donor" && (

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import { useRouter } from "next/navigation";
 import Access from "@/components/Access/Access";
@@ -11,14 +11,23 @@ export default function RegisterReciver() {
   const { userId } = useAuth();
   const { user } = useUser();
   const registerReceiver = useMutation(api.functions.createUser.registerReceiver);
+  const charities = useQuery(api.functions.createUser.listCharities, {});
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [foodAllergy, setFoodAllergy] = useState("");
+  const [activeTab, setActiveTab] = useState<"individual" | "charity">("individual");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [selectedCharityId, setSelectedCharityId] = useState<string>("");
+  const NEW_CHARITY_VALUE = "__new_charity__";
+  // Inline charity creation
+  const [charityName, setCharityName] = useState("");
+  const [charityEmail, setCharityEmail] = useState("");
+  const [charityPhone, setCharityPhone] = useState("");
+  const [charityAddress, setCharityAddress] = useState("");
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -49,9 +58,21 @@ export default function RegisterReciver() {
     }
   }, [user]);
 
+  // Autofill charity contact fields from Clerk when creating a new charity
+  useEffect(() => {
+    if (activeTab === "charity" && selectedCharityId === NEW_CHARITY_VALUE && user) {
+      if (!charityEmail) setCharityEmail(user.primaryEmailAddress?.emailAddress ?? "");
+      if (!charityPhone) setCharityPhone(user.primaryPhoneNumber?.phoneNumber ?? "");
+    }
+  }, [activeTab, selectedCharityId, user, charityEmail, charityPhone]);
+
   const allValid = useMemo(() => {
-    return firstName.trim() && lastName.trim() && phone.trim();
-  }, [firstName, lastName, phone]);
+    const baseValid = firstName.trim() && lastName.trim() && phone.trim();
+    if (activeTab === "individual") return baseValid;
+    const chooseExisting = !!selectedCharityId && selectedCharityId !== NEW_CHARITY_VALUE;
+    const createNew = selectedCharityId === NEW_CHARITY_VALUE && charityName && charityEmail && charityPhone && charityAddress;
+    return baseValid && (chooseExisting || createNew);
+  }, [firstName, lastName, phone, activeTab, selectedCharityId, charityName, charityEmail, charityPhone, charityAddress]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,13 +84,36 @@ export default function RegisterReciver() {
     if (!allValid) return;
     try {
       setSubmitting(true);
-      await registerReceiver({
-        clerk_id: userId,
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        food_allergy: foodAllergy || undefined,
-      });
+      if (activeTab === "charity" && selectedCharityId && selectedCharityId !== NEW_CHARITY_VALUE) {
+        await registerReceiver({
+          clerk_id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          food_allergy: undefined,
+          charity_id: selectedCharityId as any,
+        } as any);
+      } else if (activeTab === "charity" && selectedCharityId === NEW_CHARITY_VALUE) {
+        await registerReceiver({
+          clerk_id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          food_allergy: undefined,
+          charity_name: charityName,
+          charity_contact_email: charityEmail,
+          charity_contact_phone: charityPhone,
+          charity_address: charityAddress,
+        } as any);
+      } else {
+        await registerReceiver({
+          clerk_id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          food_allergy: foodAllergy || undefined,
+        } as any);
+      }
       setCompleted(true);
       router.replace("/dashboard");
     } catch (err) {
@@ -80,10 +124,14 @@ export default function RegisterReciver() {
   };
 
   return (
-    <Access requireAuth requireUnregistered>
+    <Access requireAuth requireUnregistered redirectIfRegisteredTo="/dashboard">
       <section className="grid gap-4 max-w-md">
         <h2 className="text-2xl font-semibold">Register as Receiver</h2>
         <div className="card grid gap-4 p-6">
+          <div className="flex gap-2">
+            <button type="button" className={`btn-outline ${activeTab === "individual" ? "!bg-primary !text-white border-transparent" : ""}`} onClick={() => setActiveTab("individual")}>Individual</button>
+            <button type="button" className={`btn-outline ${activeTab === "charity" ? "!bg-primary !text-white border-transparent" : ""}`} onClick={() => setActiveTab("charity")}>Charity user</button>
+          </div>
           <p className="text-subtext">Create an account to start claiming food.</p>
           <form className="grid gap-3" onSubmit={onSubmit}>
             <div className="grid grid-cols-2 gap-3">
@@ -100,10 +148,51 @@ export default function RegisterReciver() {
               <span className="label">Phone</span>
               <input className="input" value={phone} onChange={e=>setPhone(e.target.value)} />
             </label>
-            <label className="grid gap-1">
-              <span className="label">Food allergies (optional)</span>
-              <input className="input" value={foodAllergy} onChange={e=>setFoodAllergy(e.target.value)} />
-            </label>
+            {activeTab === "individual" && (
+              <label className="grid gap-1">
+                <span className="label">Food allergies (optional)</span>
+                <input className="input" value={foodAllergy} onChange={e=>setFoodAllergy(e.target.value)} />
+              </label>
+            )}
+            {activeTab === "individual" ? (
+              <div className="text-xs text-subtext">You will register as an individual receiver.</div>
+            ) : (
+              <>
+                <label className="grid gap-1">
+                  <span className="label">Organization</span>
+                  <select className="input" value={selectedCharityId} onChange={e=>setSelectedCharityId(e.target.value)}>
+                    <option value="">Select charity…</option>
+                    <option value={NEW_CHARITY_VALUE}>+ Add new charity</option>
+                    {(charities || []).map((c: { _id: string; name: string }) => (
+                      <option key={c._id} value={c._id as string}>{c.name}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-subtext">Choose an existing charity or add a new one.</span>
+                </label>
+                {selectedCharityId === NEW_CHARITY_VALUE && (
+                  <>
+                    <label className="grid gap-1">
+                      <span className="label">Charity name</span>
+                      <input className="input" value={charityName} onChange={e=>setCharityName(e.target.value)} />
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="grid gap-1">
+                        <span className="label">Email</span>
+                        <input type="email" className="input" value={charityEmail} onChange={e=>setCharityEmail(e.target.value)} />
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="label">Phone</span>
+                        <input className="input" value={charityPhone} onChange={e=>setCharityPhone(e.target.value)} />
+                      </label>
+                    </div>
+                    <label className="grid gap-1">
+                      <span className="label">Address</span>
+                      <input className="input" value={charityAddress} onChange={e=>setCharityAddress(e.target.value)} />
+                    </label>
+                  </>
+                )}
+              </>
+            )}
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button type="submit" className="btn-primary" disabled={!allValid || submitting}>
               {submitting ? "Registering..." : "Register"}
@@ -114,3 +203,4 @@ export default function RegisterReciver() {
     </Access>
   );
 }
+

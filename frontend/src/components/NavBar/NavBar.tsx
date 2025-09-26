@@ -8,10 +8,10 @@ import { api } from "@/convexApi";
 
 export default function NavBar() {
   const pathname = usePathname();
-  const hide = pathname?.startsWith("/login/registerdonor") || pathname?.startsWith("/login/registerreciver");
-  if (hide) return null;
   const { userId } = useAuth();
+  const hide = pathname?.startsWith("/login/register");
   const status = useQuery(api.functions.createUser.getRegistrationStatus, userId ? { clerk_id: userId } : "skip");
+  if (hide) return null;
 
   const linksLoggedOut: { href: string; label: string; exact?: boolean }[] = [
     { href: "/", label: "Home", exact: true },
@@ -19,7 +19,6 @@ export default function NavBar() {
   ];
   const linksDonor: { href: string; label: string; exact?: boolean }[] = [
     { href: "/", label: "Home", exact: true },
-    { href: "/explore", label: "Explore" },
     { href: "/donate", label: "Post Donation" },
     { href: "/dashboard", label: "Dashboard" },
   ];
@@ -65,3 +64,4 @@ export default function NavBar() {
     </header>
   );
 }
+
