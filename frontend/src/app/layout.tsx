@@ -4,6 +4,7 @@ import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import NavBar from "@/components/NavBar/NavBar";
 import { ToastProvider } from "@/components/Toast/ToastContext";
+import "ol/ol.css"; 
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({

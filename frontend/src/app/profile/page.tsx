@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -9,50 +10,109 @@ import Access from "@/components/Access/Access";
 
 type ActiveTab = "clerk" | "app";
 
+/** Shapes that mirror getProfileByClerkId output */
+type ProfileUser = {
+  _id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  user_type: "donor" | "receiver" | string;
+};
+
+type ProfileDonor = {
+  _id: string;
+  business_name: string;
+  business_email: string;
+  business_phone: string;
+  address: string;
+  verified: boolean;
+} | null;
+
+type ProfileReceiver = {
+  _id: string;
+  individuals_id: string | null;
+  charity_id: string | null;
+  individual: { _id: string; food_allergy: string | null } | null;
+  charity:
+    | {
+        _id: string;
+        charity_name: string;
+        contact_phone: string;
+        contact_email: string;
+        address: string;
+        verified: boolean;
+      }
+    | null;
+} | null;
+
+type ProfileResult =
+  | null
+  | {
+      user: ProfileUser;
+      type: "donor";
+      donor_owner: boolean;
+      donor: ProfileDonor;
+    }
+  | {
+      user: ProfileUser;
+      type: "receiver";
+      charity_owner: boolean;
+      receiver: ProfileReceiver;
+    }
+  | {
+      user: ProfileUser;
+      type: null;
+    };
+
 export default function ProfilePage() {
   const { userId } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>("clerk");
   const [editMode, setEditMode] = useState(false);
 
-  // Fetch profile data from Convex
-  const profile = useQuery(api.functions.createUser.getProfileByClerkId, userId ? { clerk_id: userId } : undefined);
+  //  pass "skip" until userId exists (prevents {} args)
+  const profile = useQuery(
+    api.functions.createUser.getProfileByClerkId,
+    userId ? { clerk_id: userId } : "skip"
+  ) as ProfileResult | undefined;
+
   const updateProfile = useMutation(api.functions.createUser.updateProfile);
 
-  // Local editable state
+  // Local editable state (kept intentionally broad to keep existing UI)
   const [form, setForm] = useState<any | null>(null);
-  const original = profile as any | undefined;
+  const original = profile;
 
-  const buildFormFromOriginal = (orig: any) => {
+  const buildFormFromOriginal = (orig: ProfileResult) => {
     const base = {
-      first_name: orig?.user?.first_name ?? "",
-      last_name: orig?.user?.last_name ?? "",
-      phone: orig?.user?.phone ?? "",
+      first_name: orig && "user" in orig ? orig.user.first_name : "",
+      last_name: orig && "user" in orig ? orig.user.last_name : "",
+      phone: orig && "user" in orig ? orig.user.phone : "",
     };
-    if (orig?.type === "donor") {
+
+    if (orig && "type" in orig && orig.type === "donor") {
       return {
         ...base,
-        donor_id: orig?.donor?._id,
-        business_name: orig?.donor?.business_name ?? "",
-        business_email: orig?.donor?.business_email ?? "",
-        business_phone: orig?.donor?.business_phone ?? "",
-        address: orig?.donor?.address ?? "",
-        verified: orig?.donor?.verified ?? false,
+        donor_id: orig.donor?._id,
+        business_name: orig.donor?.business_name ?? "",
+        business_email: orig.donor?.business_email ?? "",
+        business_phone: orig.donor?.business_phone ?? "",
+        address: orig.donor?.address ?? "",
+        verified: orig.donor?.verified ?? false,
       };
     }
-    if (orig?.type === "receiver") {
+    if (orig && "type" in orig && orig.type === "receiver") {
       return {
         ...base,
-        receiver_id: orig?.receiver?._id,
-        individuals_id: orig?.receiver?.individuals_id ?? null,
-        charity_id: orig?.receiver?.charity_id ?? null,
-        food_allergy: orig?.receiver?.individual?.food_allergy ?? "",
-        charity: orig?.receiver?.charity
+        receiver_id: orig.receiver?._id,
+        individuals_id: orig.receiver?.individuals_id ?? null,
+        charity_id: orig.receiver?.charity_id ?? null,
+        food_allergy: orig.receiver?.individual?.food_allergy ?? "",
+        charity: orig.receiver?.charity
           ? {
-              charity_name: orig?.receiver?.charity?.charity_name ?? "",
-              contact_phone: orig?.receiver?.charity?.contact_phone ?? "",
-              contact_email: orig?.receiver?.charity?.contact_email ?? "",
-              address: orig?.receiver?.charity?.address ?? "",
-              verified: orig?.receiver?.charity?.verified ?? false,
+              charity_name: orig.receiver.charity.charity_name ?? "",
+              contact_phone: orig.receiver.charity.contact_phone ?? "",
+              contact_email: orig.receiver.charity.contact_email ?? "",
+              address: orig.receiver.charity.address ?? "",
+              verified: orig.receiver.charity.verified ?? false,
             }
           : null,
       };
@@ -61,13 +121,20 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (!original) return;
+    if (!original || original === null || original === undefined) return;
+    // When result is the “not registered” shape: { user, type: null }
     setForm(buildFormFromOriginal(original));
-  }, [original?.user?._id, original?.type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [original && "user" in (original as any) ? (original as any).user._id : undefined, (original as any)?.type]);
 
-  const isLoading = userId && profile === undefined;
-  const notRegistered = profile && (profile as any)?.type === null;
-  const accountType: string = original?.type === "donor" ? "Donor" : original?.type === "receiver" ? "Receiver" : "—";
+  const isLoading = !!userId && profile === undefined;
+  const notRegistered = !!profile && (profile as any)?.type === null;
+  const accountType =
+    (original as any)?.type === "donor"
+      ? "Donor"
+      : (original as any)?.type === "receiver"
+      ? "Receiver"
+      : "—";
 
   const onCancel = () => {
     if (!original) return;
@@ -76,11 +143,10 @@ export default function ProfilePage() {
   };
 
   const onSave = async () => {
-    if (!original?.user?._id || !form) return;
-    const payload: any = { user_id: original.user._id };
+    if (!original || !("user" in original) || !original.user?._id || !form) return;
+    const payload: Record<string, unknown> = { user_id: original.user._id };
 
-    // Compare and include only changed fields
-    const addIfChanged = (key: string, newVal: any, oldVal: any) => {
+    const addIfChanged = (key: string, newVal: unknown, oldVal: unknown) => {
       if (newVal !== oldVal) payload[key] = newVal;
     };
 
@@ -88,39 +154,38 @@ export default function ProfilePage() {
     addIfChanged("last_name", form.last_name, original.user.last_name);
     addIfChanged("phone", form.phone, original.user.phone);
 
-    if (original.type === "donor") {
-      payload.donor_id = form.donor_id;
-      addIfChanged("business_name", form.business_name, original.donor?.business_name ?? "");
-      addIfChanged("business_email", form.business_email, original.donor?.business_email ?? "");
-      addIfChanged("business_phone", form.business_phone, original.donor?.business_phone ?? "");
-      addIfChanged("address", form.address, original.donor?.address ?? "");
+    if ((original as any).type === "donor") {
+      payload["donor_id"] = form.donor_id;
+      addIfChanged("business_name", form.business_name, (original as any).donor?.business_name ?? "");
+      addIfChanged("business_email", form.business_email, (original as any).donor?.business_email ?? "");
+      addIfChanged("business_phone", form.business_phone, (original as any).donor?.business_phone ?? "");
+      addIfChanged("address", form.address, (original as any).donor?.address ?? "");
     }
 
-    if (original.type === "receiver") {
-      payload.receiver_id = form.receiver_id;
-      payload.individuals_id = form.individuals_id ?? undefined;
+    if ((original as any).type === "receiver") {
+      payload["receiver_id"] = form.receiver_id;
+      payload["individuals_id"] = form.individuals_id ?? undefined;
       if (form.individuals_id) {
         addIfChanged(
           "food_allergy",
           form.food_allergy,
-          original.receiver?.individual?.food_allergy ?? ""
+          (original as any).receiver?.individual?.food_allergy ?? ""
         );
       }
-      // Charity fields: allow editing if owner
-      if (form.charity && original.charity_owner && form.charity_id) {
-        payload.charity_id = form.charity_id;
-        addIfChanged("charity_name", form.charity.charity_name, original.receiver?.charity?.charity_name ?? "");
+      if (form.charity && (original as any).charity_owner && form.charity_id) {
+        payload["charity_id"] = form.charity_id;
+        addIfChanged("charity_name", form.charity.charity_name, (original as any).receiver?.charity?.charity_name ?? "");
         addIfChanged(
           "charity_contact_phone",
           form.charity.contact_phone,
-          original.receiver?.charity?.contact_phone ?? ""
+          (original as any).receiver?.charity?.contact_phone ?? ""
         );
         addIfChanged(
           "charity_contact_email",
           form.charity.contact_email,
-          original.receiver?.charity?.contact_email ?? ""
+          (original as any).receiver?.charity?.contact_email ?? ""
         );
-        addIfChanged("charity_address", form.charity.address, original.receiver?.charity?.address ?? "");
+        addIfChanged("charity_address", form.charity.address, (original as any).receiver?.charity?.address ?? "");
       }
     }
 
@@ -172,9 +237,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {activeTab === "clerk" && (
-          <UserProfile routing="hash" />
-        )}
+        {activeTab === "clerk" && <UserProfile routing="hash" />}
 
         {activeTab === "app" && (
           <div className="grid gap-4">
@@ -214,11 +277,7 @@ export default function ProfilePage() {
                     value={form.phone}
                     onChange={(v) => setForm({ ...form, phone: v })}
                   />
-                  <Field
-                    label="Account type"
-                    value={accountType}
-                    readOnly
-                  />
+                  <Field label="Account type" value={accountType} readOnly />
 
                   {(original as any)?.type === "donor" && (
                     <div className="grid gap-3">
@@ -266,26 +325,38 @@ export default function ProfilePage() {
                           <Field
                             label="Charity name"
                             value={form.charity.charity_name}
-                            onChange={(v) => setForm({ ...form, charity: { ...form.charity, charity_name: v } })}
+                            onChange={(v) =>
+                              setForm({ ...form, charity: { ...form.charity, charity_name: v } })
+                            }
                             readOnly={!editMode || !(original as any)?.charity_owner}
                           />
-                          <Field label="Verified" value={form.charity.verified ? "Yes" : "No"} readOnly />
+                          <Field
+                            label="Verified"
+                            value={form.charity.verified ? "Yes" : "No"}
+                            readOnly
+                          />
                           <Field
                             label="Contact phone"
                             value={form.charity.contact_phone}
-                            onChange={(v) => setForm({ ...form, charity: { ...form.charity, contact_phone: v } })}
+                            onChange={(v) =>
+                              setForm({ ...form, charity: { ...form.charity, contact_phone: v } })
+                            }
                             readOnly={!editMode || !(original as any)?.charity_owner}
                           />
                           <Field
                             label="Contact email"
                             value={form.charity.contact_email}
-                            onChange={(v) => setForm({ ...form, charity: { ...form.charity, contact_email: v } })}
+                            onChange={(v) =>
+                              setForm({ ...form, charity: { ...form.charity, contact_email: v } })
+                            }
                             readOnly={!editMode || !(original as any)?.charity_owner}
                           />
                           <Field
                             label="Address"
                             value={form.charity.address}
-                            onChange={(v) => setForm({ ...form, charity: { ...form.charity, address: v } })}
+                            onChange={(v) =>
+                              setForm({ ...form, charity: { ...form.charity, address: v } })
+                            }
                             readOnly={!editMode || !(original as any)?.charity_owner}
                           />
                         </div>
@@ -296,7 +367,6 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Save / Cancel */}
             {editMode && !isLoading && !notRegistered && (
               <div className="flex gap-2">
                 <button type="button" className="btn-primary" onClick={onSave}>

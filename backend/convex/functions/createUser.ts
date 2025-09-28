@@ -35,6 +35,8 @@ export const registerDonor = mutation({
     business_name: v.optional(v.string()),
     business_email: v.optional(v.string()),
     business_phone: v.optional(v.string()),
+    lat: v.optional(v.union(v.number(), v.null())),
+    lng: v.optional(v.union(v.number(), v.null())),
   },
   handler: async ({ db }, args) => {
     const userId = await ensureUserByClerkId(db, {
@@ -76,6 +78,8 @@ export const registerDonor = mutation({
       business_phone: args.business_phone,
       address: args.address,
       verified: false,
+      lat: typeof args.lat === "number" ? args.lat : undefined,
+      lng: typeof args.lng === "number" ? args.lng : undefined,
     });
     await db.insert("userInDonor", { user_id: userId, donors_id: donorId, owner: true });
     return { userId, donorId };

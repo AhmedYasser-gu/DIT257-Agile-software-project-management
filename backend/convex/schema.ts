@@ -21,13 +21,12 @@ enum ClaimedStatus {
 const claimedStatusValidator = v.union(
   v.literal(ClaimedStatus.Pending),
   v.literal(ClaimedStatus.PickedUp)
-)
+);
 
 enum UserType {
   Donor = "DONOR",
   Receiver = "RECEIVER",
 }
-
 const userTypeValidator = v.union(v.literal("donor"), v.literal("receiver"));
 
 export default defineSchema({
@@ -45,6 +44,8 @@ export default defineSchema({
     business_phone: v.string(),
     address: v.string(),
     verified: v.boolean(),
+    lat: v.optional(v.number()),
+    lng: v.optional(v.number()),
   }),
 
   userInDonor: defineTable({

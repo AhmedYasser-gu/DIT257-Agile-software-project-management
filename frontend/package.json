@@ -13,13 +13,17 @@
     "clsx": "^2.1.1",
     "convex": "^1.27.0",
     "convex-helpers": "^0.1.104",
+    "leaflet": "^1.9.4",
     "next": "15.5.3",
+    "ol": "^10.6.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-leaflet": "^5.0.0",
     "recharts": "^3.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/leaflet": "^1.9.20",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

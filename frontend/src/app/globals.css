@@ -37,3 +37,47 @@ body {
 .label {
   @apply text-sm text-subtext;
 }
+
+/* --- OpenLayers marker label overlay --- */
+.ol-marker-label {
+  pointer-events: none; /* don’t block map interactions */
+  transform: translateY(-6px);
+  display: none;
+  z-index: 1000;
+}
+
+.ol-label-card {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial;
+  background: rgba(17, 24, 39, 0.92); /* slate-900-ish */
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  max-width: 260px;
+  line-height: 1.2;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ol-label-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ol-label-items {
+  font-size: 11px;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
