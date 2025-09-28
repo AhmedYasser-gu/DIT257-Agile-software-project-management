@@ -14,10 +14,14 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as crons from "../crons.js";
+import type * as functions_claimDonation from "../functions/claimDonation.js";
 import type * as functions_createDonation from "../functions/createDonation.js";
 import type * as functions_createUser from "../functions/createUser.js";
 import type * as functions_expireDonations from "../functions/expireDonations.js";
 import type * as functions_getAllDonors from "../functions/getAllDonors.js";
+import type * as functions_listAvailableDonations from "../functions/listAvailableDonations.js";
+import type * as functions_listMyClaims from "../functions/listMyClaims.js";
+import type * as functions_listMyDonations from "../functions/listMyDonations.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -29,10 +33,14 @@ import type * as functions_getAllDonors from "../functions/getAllDonors.js";
  */
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
+  "functions/claimDonation": typeof functions_claimDonation;
   "functions/createDonation": typeof functions_createDonation;
   "functions/createUser": typeof functions_createUser;
   "functions/expireDonations": typeof functions_expireDonations;
   "functions/getAllDonors": typeof functions_getAllDonors;
+  "functions/listAvailableDonations": typeof functions_listAvailableDonations;
+  "functions/listMyClaims": typeof functions_listMyClaims;
+  "functions/listMyDonations": typeof functions_listMyDonations;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

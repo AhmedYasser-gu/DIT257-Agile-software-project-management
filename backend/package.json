@@ -12,6 +12,6 @@
   "type": "commonjs",
   "dependencies": {
     "@clerk/nextjs": "^6.32.0",
-    "convex": "^1.27.0"
+    "convex": "^1.27.3"
   }
 }

@@ -10,34 +10,45 @@ export default function NavBar() {
   const pathname = usePathname();
   const { userId } = useAuth();
   const hide = pathname?.startsWith("/login/register");
-  const status = useQuery(api.functions.createUser.getRegistrationStatus, userId ? { clerk_id: userId } : "skip");
+  const status = useQuery(
+    api.functions.createUser.getRegistrationStatus,
+    userId ? { clerk_id: userId } : "skip"
+  );
   if (hide) return null;
 
-  const linksLoggedOut: { href: string; label: string; exact?: boolean }[] = [
+  const linksLoggedOut = [
     { href: "/", label: "Home", exact: true },
-    { href: "/explore", label: "Explore" },
+    { href: "/how-it-works", label: "How it works" },
   ];
-  const linksDonor: { href: string; label: string; exact?: boolean }[] = [
+  const linksDonor = [
     { href: "/", label: "Home", exact: true },
+    { href: "/dashboard", label: "Dashboard" },
     { href: "/donate", label: "Post Donation" },
-    { href: "/dashboard", label: "Dashboard" },
+    { href: "/how-it-works", label: "How it works" },
   ];
-  const linksReceiver: { href: string; label: string; exact?: boolean }[] = [
+  const linksReceiver = [
     { href: "/", label: "Home", exact: true },
     { href: "/explore", label: "Explore" },
     { href: "/dashboard", label: "Dashboard" },
+    { href: "/how-it-works", label: "How it works" },
   ];
 
-  let links: { href: string; label: string; exact?: boolean }[] = linksLoggedOut;
+  let links = linksLoggedOut;
   if (userId) {
     if (status === undefined) {
-      links = [];
+      links = [
+        { href: "/", label: "Home", exact: true },
+        { href: "/dashboard", label: "Dashboard" },
+      ];
     } else if (status?.registered && status?.userType === "donor") {
       links = linksDonor;
     } else if (status?.registered && status?.userType === "receiver") {
       links = linksReceiver;
     } else {
-      links = linksLoggedOut;
+      links = [
+        { href: "/", label: "Home", exact: true },
+        { href: "/dashboard", label: "Dashboard" },
+      ];
     }
   }
 
@@ -54,14 +65,18 @@ export default function NavBar() {
             </NavLink>
           ))}
           <SignedIn>
+            {status && status.registered && status.userType && (
+              <span className="text-xs px-2 py-1 rounded bg-[#E0E0E0] text-[#212121]">
+                {status.userType.charAt(0).toUpperCase() +
+                  status.userType.slice(1)}{" "}
+                Account
+              </span>
+            )}
             <UserButton userProfileUrl="/profile" afterSignOutUrl="/" />
           </SignedIn>
-          <SignedOut>
-            {/* No auth buttons in header when signed out, per requirements */}
-          </SignedOut>
+          <SignedOut>{/* no auth buttons when signed out */}</SignedOut>
         </div>
       </nav>
     </header>
   );
 }
-
