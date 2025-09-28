@@ -122,7 +122,7 @@ export default function HowItWorks() {
         </div>
       </div>
 
-      {/* FAQ (accessible, no JS needed) */}
+      {/* FAQ */}
       <div className="card p-6">
         <h3 className="text-xl font-semibold mb-2">Frequently asked questions</h3>
         <div className="grid gap-2">
