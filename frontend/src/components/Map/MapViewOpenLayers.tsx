@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Map from "ol/Map";
+import OlMap from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
@@ -16,9 +16,10 @@ import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Overlay from "ol/Overlay";
 import type { FeatureLike } from "ol/Feature";
+import { createEmpty as createExtent, extend as extendExtent } from "ol/extent";
 import "ol/ol.css";
 
-const PARIS = [2.35, 48.85];
+const PARIS: [number, number] = [2.35, 48.85];
 
 function markerStyle(color = "#4CAF50") {
   return new Style({
@@ -30,19 +31,29 @@ function markerStyle(color = "#4CAF50") {
   });
 }
 
-// Export type so consumers can `import { MapPoint }`
+// A single donation (used inside grouped popups)
+type GroupDonation = { title?: string; items?: string[]; status?: string };
+
 export type MapPoint = {
   id: string;
   lat: number;
   lng: number;
-  title?: string;
+  title?: string;          // single-donation title (legacy shape)
   donorName?: string;
-  items?: string[];
-  status?: string;
+  items?: string[];        // single-donation items (legacy shape)
+  status?: string;         // single-donation status (legacy shape)
   detailUrl?: string;
+  donations?: GroupDonation[];
 };
 
 type LatLng = { lat: number; lng: number };
+
+type Group = {
+  donorName?: string;
+  lat: number;
+  lng: number;
+  donations: GroupDonation[];
+};
 
 export default function MapViewOpenLayers({
   // viewer
@@ -56,6 +67,7 @@ export default function MapViewOpenLayers({
   className,
   showLegend = true,
   emptyMessage = "No donor locations with pins around you yet.",
+  legendMode = "auto",
 }: {
   points?: MapPoint[];
   userLocation?: LatLng | null;
@@ -65,26 +77,44 @@ export default function MapViewOpenLayers({
   className?: string;
   showLegend?: boolean;
   emptyMessage?: string;
+  legendMode?: "auto" | "pickerOnly" | "full";
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<Map | null>(null);
+  const mapRef = useRef<OlMap | null>(null);
+
   const srcPinsRef = useRef<VectorSource | null>(null);
+  const srcUserRef = useRef<VectorSource | null>(null);
   const srcPickerRef = useRef<VectorSource | null>(null);
+
   const userFeatRef = useRef<Feature<Point> | null>(null);
   const pickerFeatRef = useRef<Feature<Point> | null>(null);
+
   const overlayRef = useRef<Overlay | null>(null);
   const overlayElRef = useRef<HTMLDivElement | null>(null);
 
-  const hasPins = (points?.length ?? 0) > 0;
+  // keep latest onChange without re-initializing the map
+  const onChangeRef = useRef<typeof onChange>(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
+  const hasPins = (points?.length ?? 0) > 0;
+  const legendPickerOnly =
+    legendMode === "pickerOnly" ||
+    (legendMode === "auto" && !!onChange && !hasPins && !userLocation);
+
+  // INIT ONCE
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     const base = new TileLayer({ source: new OSM() });
 
     const srcPins = new VectorSource();
+    const srcUser = new VectorSource();
     const srcPicker = new VectorSource();
+
     srcPinsRef.current = srcPins;
+    srcUserRef.current = srcUser;
     srcPickerRef.current = srcPicker;
 
     const pinsLayer = new VectorLayer({
@@ -92,14 +122,19 @@ export default function MapViewOpenLayers({
       style: (f: FeatureLike) => f.get("style") ?? markerStyle("#3B82F6"),
     });
 
-    const pickerLayer = new VectorLayer({
-      source: srcPicker,
-      style: markerStyle("#4CAF50"),
+    const userLayer = new VectorLayer({
+      source: srcUser,
+      style: markerStyle("#EB6A25"), // ORANGE: "You"
     });
 
-    const map = new Map({
+    const pickerLayer = new VectorLayer({
+      source: srcPicker,
+      style: markerStyle("#4CAF50"), // Selected
+    });
+
+    const map = new OlMap({
       target: containerRef.current,
-      layers: [base, pinsLayer, pickerLayer],
+      layers: [base, pinsLayer, userLayer, pickerLayer],
       view: new View({
         center: fromLonLat(PARIS),
         zoom: 3,
@@ -108,10 +143,11 @@ export default function MapViewOpenLayers({
     });
     mapRef.current = map;
 
-    // overlay label
+    // overlay (for donor pins; content is prebuilt html stored on feature)
     const label = document.createElement("div");
     label.className = "rounded-lg bg-white px-3 py-2 text-xs shadow-md border";
     overlayElRef.current = label;
+
     const overlay = new Overlay({
       element: label,
       offset: [0, -18],
@@ -121,12 +157,13 @@ export default function MapViewOpenLayers({
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
-    // picking
+    // pick on click (if picker mode)
     map.on("singleclick", (evt) => {
-      if (!onChange) return;
+      const cb = onChangeRef.current;
+      if (!cb) return;
       const [lng, lat] = toLonLat(evt.coordinate);
-      setPicker(lat, lng);
-      onChange({ lat, lng });
+      setPicker(lat, lng, { recenter: true });
+      cb({ lat, lng });
     });
 
     // hover label
@@ -137,21 +174,12 @@ export default function MapViewOpenLayers({
         overlayElRef.current.style.display = "none";
         return;
       }
-      const d = feature.get("data") as MapPoint | undefined;
-      if (!d) {
+      const html = feature.get("popupHtml") as string | undefined;
+      if (!html) {
         overlayElRef.current.style.display = "none";
         return;
       }
-      overlayElRef.current.innerHTML = `
-        <div class="font-medium">${escapeHTML(d.donorName || d.title || "Pickup")}</div>
-        ${
-          d.items?.length
-            ? `<div class="text-subtext">${escapeHTML(
-                d.items.slice(0, 3).join(" · ") + (d.items.length > 3 ? " +" : "")
-              )}</div>`
-            : ""
-        }
-      `;
+      overlayElRef.current.innerHTML = html;
       overlay.setPosition(evt.coordinate);
       overlayElRef.current.style.display = "block";
     });
@@ -159,97 +187,189 @@ export default function MapViewOpenLayers({
     map.getViewport().addEventListener("mouseleave", () => {
       if (overlayElRef.current) overlayElRef.current.style.display = "none";
     });
+    map.on("pointerdrag", () => {
+      if (overlayElRef.current) overlayElRef.current.style.display = "none";
+    });
 
     return () => {
       map.setTarget(undefined);
       mapRef.current = null;
       srcPinsRef.current = null;
+      srcUserRef.current = null;
       srcPickerRef.current = null;
       pickerFeatRef.current = null;
       userFeatRef.current = null;
       overlayRef.current = null;
-      overlayElRef.current = null;
+      overlayElRef.current = null as unknown as HTMLDivElement;
     };
-  }, [onChange]);
+  }, []);
 
-  // draw pins + user marker + fit
+  // Keep OL sized with layout changes (prevents blank/partial render)
+  useEffect(() => {
+    const map = mapRef.current;
+    const el = containerRef.current;
+    if (!map || !el) return;
+
+    const t = setTimeout(() => map.updateSize(), 0);
+    const onWin = () => map.updateSize();
+    window.addEventListener("resize", onWin);
+
+    const ro = new ResizeObserver(() => map.updateSize());
+    ro.observe(el);
+
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", onWin);
+      ro.disconnect();
+    };
+  }, []);
+
+  // draw + view management (supports BOTH input shapes)
   useEffect(() => {
     const map = mapRef.current;
     const srcPins = srcPinsRef.current;
-    if (!map || !srcPins) return;
+    const srcUser = srcUserRef.current;
+    if (!map || !srcPins || !srcUser) return;
 
     srcPins.clear();
+    srcUser.clear();
 
-    // user marker (blue)
-    if (userLocation && Number.isFinite(userLocation.lat) && Number.isFinite(userLocation.lng)) {
+    // user marker (orange)
+    const hasUser =
+      !!userLocation &&
+      Number.isFinite(userLocation.lat) &&
+      Number.isFinite(userLocation.lng);
+
+    if (hasUser) {
       const f = new Feature({
-        geometry: new Point(fromLonLat([userLocation.lng, userLocation.lat])),
+        geometry: new Point(fromLonLat([userLocation!.lng, userLocation!.lat])),
       });
-      f.set("style", markerStyle("#2563EB"));
-      srcPins.addFeature(f);
+      f.setStyle(markerStyle("#EB6A25"));
+      srcUser.addFeature(f);
       userFeatRef.current = f;
     } else {
       userFeatRef.current = null;
     }
 
-    // donation pins (indigo)
-    for (const p of points ?? []) {
-      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
-      const f = new Feature({ geometry: new Point(fromLonLat([p.lng, p.lat])) });
-      f.set("data", p);
-      f.set("style", markerStyle("#3B82F6"));
+    // ── Build groups from incoming points ──
+    const groups = new globalThis.Map<string, Group>();
+
+    (points ?? []).forEach((p) => {
+      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+
+      // If caller already grouped donations, use them directly.
+      const incoming: GroupDonation[] | undefined = p.donations;
+
+      // Grouping key: location rounded + donor name
+      const key = `${p.lng.toFixed(6)},${p.lat.toFixed(6)}|${p.donorName ?? ""}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { donorName: p.donorName, lat: p.lat, lng: p.lng, donations: [] };
+        groups.set(key, g);
+      }
+
+      if (incoming && incoming.length) {
+        // push all provided donations
+        incoming.forEach((d) => g!.donations.push({ title: d.title, items: d.items, status: d.status }));
+      } else {
+        // legacy: one point == one donation
+        g.donations.push({ title: p.title, items: p.items, status: p.status });
+      }
+    });
+
+    // add 1 feature per group with prebuilt HTML tooltip
+    groups.forEach((g) => {
+      const f = new Feature({
+        geometry: new Point(fromLonLat([g.lng, g.lat])),
+      });
+
+      const lines = g.donations.slice(0, 6).map((d) => {
+        const name = escapeHTML(d.title ?? "Donation");
+        const st = d.status
+          ? ` <span class="text-[10px] px-1 py-0.5 rounded bg-muted/50 border">${escapeHTML(
+              d.status
+            )}</span>`
+          : "";
+        return `<li class="leading-tight">• ${name}${st}</li>`;
+      });
+      const extra =
+        g.donations.length > 6 ? `<div class="text-subtext mt-1">+${g.donations.length - 6} more…</div>` : "";
+
+      const html = `
+        <div class="font-medium">${escapeHTML(g.donorName || "Donor")}</div>
+        <ul class="mt-1">${lines.join("")}</ul>
+        ${extra}
+      `;
+      f.set("popupHtml", html);
+      f.setStyle(markerStyle("#3B82F6"));
       srcPins.addFeature(f);
+    });
+    // ──────────────────────────────────────
+
+    // Combined extent: pins + user + picker
+    const view = map.getView();
+    const ext = createExtent();
+    let haveExtent = false;
+
+    if (srcPins.getFeatures().length > 0) {
+      extendExtent(ext, srcPins.getExtent());
+      haveExtent = true;
+    }
+    if (userFeatRef.current) {
+      extendExtent(ext, (userFeatRef.current.getGeometry() as Point).getExtent());
+      haveExtent = true;
+    }
+    if (pickerFeatRef.current) {
+      extendExtent(ext, (pickerFeatRef.current.getGeometry() as Point).getExtent());
+      haveExtent = true;
+    } else if (value && Number.isFinite(value.lat) && Number.isFinite(value.lng)) {
+      extendExtent(ext, new Point(fromLonLat([value.lng, value.lat])).getExtent());
+      haveExtent = true;
     }
 
-    // fit bounds if we have anything
-    const feats = srcPins.getFeatures();
-    if (feats.length > 0) {
+    if (haveExtent) {
       try {
-        map.getView().fit(srcPins.getExtent(), {
-          padding: [40, 40, 40, 40],
-          maxZoom: 15,
-          duration: 250,
-        });
+        view.fit(ext, { padding: [40, 40, 40, 40], maxZoom: 15, duration: 250 });
       } catch {}
     } else {
-      // fall back to user, then default
-      if (userLocation) {
-        map.getView().animate({
-          center: fromLonLat([userLocation.lng, userLocation.lat]),
-          zoom: 12,
-          duration: 200,
-        });
-      } else {
-        map.getView().setCenter(fromLonLat(PARIS));
-        map.getView().setZoom(3);
+      // fallback default only if nothing else to show
+      if ((view.getZoom() ?? 0) < 3.5) {
+        view.setCenter(fromLonLat(PARIS));
+        view.setZoom(3);
       }
     }
-  }, [JSON.stringify(points ?? []), userLocation?.lat, userLocation?.lng]);
+  }, [JSON.stringify(points ?? []), userLocation?.lat, userLocation?.lng, value?.lat, value?.lng]);
 
-  // reflect picker value
+  // reflect picker value from props
   useEffect(() => {
     if (!value) return;
     if (!Number.isFinite(value.lat) || !Number.isFinite(value.lng)) return;
-    setPicker(value.lat, value.lng);
+    setPicker(value.lat, value.lng, { recenter: true });
   }, [value?.lat, value?.lng]);
 
-  function setPicker(lat: number, lng: number) {
+  function setPicker(lat: number, lng: number, opts?: { recenter?: boolean }) {
     const srcPicker = srcPickerRef.current;
+    const map = mapRef.current;
     if (!srcPicker) return;
+
+    const coord = fromLonLat([lng, lat]);
     if (!pickerFeatRef.current) {
-      pickerFeatRef.current = new Feature({
-        geometry: new Point(fromLonLat([lng, lat])),
-      });
+      pickerFeatRef.current = new Feature({ geometry: new Point(coord) });
       pickerFeatRef.current.setStyle(markerStyle("#4CAF50"));
       srcPicker.addFeature(pickerFeatRef.current);
     } else {
-      pickerFeatRef.current.setGeometry(new Point(fromLonLat([lng, lat])));
+      pickerFeatRef.current.setGeometry(new Point(coord));
       srcPicker.changed();
+    }
+    if (opts?.recenter && map) {
+      const view = map.getView();
+      const targetZoom = Math.max(view.getZoom() ?? 3, 14);
+      view.animate({ center: coord, zoom: targetZoom, duration: 200 });
     }
   }
 
-  // If there are no donor pins AND no user marker, show a nice empty state card
-  if (!hasPins && !userLocation) {
+  // Empty state only when truly nothing to show
+  if (!hasPins && !userLocation && !value && !onChange) {
     return (
       <div className={className}>
         <div className="card p-6">
@@ -267,31 +387,41 @@ export default function MapViewOpenLayers({
           <div>
             <div className="font-medium">Map</div>
             <div className="text-xs text-subtext">
-              {hasPins ? "Donations by location" : "Your location"}
+              {hasPins ? "Donations by location" : onChange ? "Pick a location" : "Your location"}
             </div>
           </div>
           <div className="text-xs text-subtext">
             {hasPins ? `Total: ${points?.length ?? 0}` : ""}
           </div>
         </div>
+
         <div ref={containerRef} style={{ height }} className="w-full" />
 
         {showLegend && (
           <div className="absolute bottom-3 right-3 rounded-md bg-white/95 px-3 py-2 shadow-md text-xs border">
             <div className="font-medium mb-1">Legend</div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#eb5325ff" }} />
-              You
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#3B82F6" }} />
-              Donor
-            </div>
-            {onChange && (
+            {legendPickerOnly ? (
               <div className="flex items-center gap-2">
                 <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#4CAF50" }} />
                 Selected
               </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#EB6A25" }} />
+                  You
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#3B82F6" }} />
+                  Donor
+                </div>
+                {onChange && (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#4CAF50" }} />
+                    Selected
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -301,5 +431,8 @@ export default function MapViewOpenLayers({
 }
 
 function escapeHTML(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)
+  );
 }

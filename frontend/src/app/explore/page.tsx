@@ -74,13 +74,18 @@ export default function Explore() {
     L.sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
       if (sort === "newest") return (b._id ?? "").localeCompare(a._id ?? "");
-      const ae = new Date((a.pickup_window_end || "").replace(" ", "T")).getTime() || Infinity;
-      const be = new Date((b.pickup_window_end || "").replace(" ", "T")).getTime() || Infinity;
+      const ae =
+        new Date((a.pickup_window_end || "").replace(" ", "T")).getTime() ||
+        Infinity;
+      const be =
+        new Date((b.pickup_window_end || "").replace(" ", "T")).getTime() ||
+        Infinity;
       return ae - be;
     });
     return L;
   }, [data, q, cat, sort]);
 
+  // PER‑DONATION points; MapView will group them for the tooltip
   const points: MapPoint[] = useMemo(
     () =>
       (list ?? [])
@@ -110,7 +115,12 @@ export default function Explore() {
             <p className="text-subtext text-sm">Browse and claim food that’s still good!</p>
           </div>
           <div className="flex gap-2">
-            <input className="input" placeholder="Search (title, description, donor)…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input
+              className="input"
+              placeholder="Search (title, description, donor)…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
             <select className="input" value={cat} onChange={(e) => setCat(e.target.value)}>
               {cats.map((c) => (
                 <option key={c} value={c}>
@@ -132,7 +142,7 @@ export default function Explore() {
             points={points}
             userLocation={me}
             height={360}
-            emptyMessage="No donors with avaliable location shared yet."
+            emptyMessage="No donors with available location shared yet."
           />
 
           <div className="order-2 md:order-none">
@@ -145,7 +155,10 @@ export default function Explore() {
             )}
 
             {data && list.length === 0 && (
-              <Empty title="No donations match your filters." hint="Try clearing the search or switching category." />
+              <Empty
+                title="No donations match your filters."
+                hint="Try clearing the search or switching category."
+              />
             )}
 
             {data && list.length > 0 && (

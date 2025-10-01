@@ -8,6 +8,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import Access from "@/components/Access/Access";
 import MapViewOpenLayers from "@/components/Map/MapViewOpenLayers";
+import AddressSearch from "@/components/Input/AddressSearch";
+import { reverseGeocode } from "@/helpers/geocode";
 
 type ActiveTab = "clerk" | "app";
 
@@ -133,12 +135,6 @@ export default function ProfilePage() {
 
   const isLoading = !!userId && profile === undefined;
   const notRegistered = !!profile && (profile as any)?.type === null;
-  const accountType =
-    (original as any)?.type === "donor"
-      ? "Donor"
-      : (original as any)?.type === "receiver"
-      ? "Receiver"
-      : "—";
 
   const onCancel = () => {
     if (!original) return;
@@ -199,53 +195,15 @@ export default function ProfilePage() {
     setEditMode(false);
   };
 
-  // --- geocode helpers (donor edit) ---
-  const geocodeTimer = useRef<number | null>(null);
-  useEffect(() => {
-    if (!editMode) return;
-    if ((original as any)?.type !== "donor") return;
-    if (!form?.address || !form.address.trim()) return;
-    if (geocodeTimer.current) window.clearTimeout(geocodeTimer.current);
-    geocodeTimer.current = window.setTimeout(async () => {
-      try {
-        const url = new URL("https://nominatim.openstreetmap.org/search");
-        url.searchParams.set("q", form.address);
-        url.searchParams.set("format", "json");
-        url.searchParams.set("limit", "1");
-        const r = await fetch(url.toString(), {
-          headers: { "Accept-Language": "en", "User-Agent": "NoLeftovers/1.0" },
-        });
-        const j = (await r.json()) as Array<{ lat: string; lon: string }>;
-        if (j?.[0]) {
-          const lat = parseFloat(j[0].lat);
-          const lng = parseFloat(j[0].lon);
-          if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            setForm((f: any) => ({ ...f, lat, lng }));
-          }
-        }
-      } catch {}
-    }, 450);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editMode, form?.address]);
-
+  // Map → address (reverse geocode always)
   const onPick = async (pos: { lat: number; lng: number } | null) => {
     if ((original as any)?.type !== "donor") return;
     setForm((f: any) => ({ ...f, lat: pos?.lat ?? null, lng: pos?.lng ?? null }));
     if (!pos) return;
     try {
-      const url = new URL("https://nominatim.openstreetmap.org/reverse");
-      url.searchParams.set("lat", String(pos.lat));
-      url.searchParams.set("lon", String(pos.lng));
-      url.searchParams.set("format", "json");
-      const r = await fetch(url.toString(), {
-        headers: { "Accept-Language": "en", "User-Agent": "NoLeftovers/1.0" },
-      });
-      const j = await r.json();
-      const disp = j?.display_name as string | undefined;
-      if (disp && (!form?.address || form.address.length < 8)) {
-        setForm((f: any) => ({ ...f, address: disp }));
-      }
-    } catch {}
+      const disp = await reverseGeocode(pos.lat, pos.lng);
+      if (disp) setForm((f: any) => ({ ...f, address: disp }));
+    } catch { /* ignore */ }
   };
 
   const Field = ({
@@ -328,10 +286,11 @@ export default function ProfilePage() {
                     />
                   </div>
                   <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
-                  <Field label="Account type" value={
-                    (original as any)?.type === "donor" ? "Donor" :
-                    (original as any)?.type === "receiver" ? "Receiver" : "—"
-                  } readOnly />
+                  <Field
+                    label="Account type"
+                    value={(original as any)?.type === "donor" ? "Donor" : (original as any)?.type === "receiver" ? "Receiver" : "—"}
+                    readOnly
+                  />
 
                   {(original as any)?.type === "donor" && (
                     <div className="grid gap-3">
@@ -342,14 +301,22 @@ export default function ProfilePage() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <Field label="Business phone" value={form.business_phone} onChange={(v) => setForm({ ...form, business_phone: v })} />
-                        <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+                        {editMode ? (
+                          <AddressSearch
+                            label="Business address"
+                            value={form.address || ""}
+                            onChangeText={(v) => setForm({ ...form, address: v })}
+                            onSelectPlace={(c) => setForm((f: any) => ({ ...f, address: c.label, lat: c.lat, lng: c.lng }))}
+                          />
+                        ) : (
+                          <Field label="Business address" value={form.address} readOnly />
+                        )}
                       </div>
 
-                      {/* Map picker visible in edit mode */}
                       {editMode && (
                         <div className="grid gap-1">
                           <div className="label">Business location</div>
-                          <div className="text-xs text-subtext mb-2">Click map or edit the address; both stay in sync.</div>
+                          <div className="text-xs text-subtext mb-2">Search or click the map—both stay in sync.</div>
                           <MapViewOpenLayers
                             value={
                               Number.isFinite(form?.lat) && Number.isFinite(form?.lng)

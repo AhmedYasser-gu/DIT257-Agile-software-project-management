@@ -5,16 +5,17 @@ import { useMutation, useQuery } from "convex/react";
 import Input from "@/components/Input/Input";
 import Access from "@/components/Access/Access";
 import { api } from "@/convexApi";
-import { FOOD_CATEGORIES, FoodCategory } from "@/constants/categories";
+import { PRESET_FOOD_CATEGORIES, FoodCategory } from "@/constants/categories";
 import { useToast } from "@/components/Toast/ToastContext";
+import CategorySelect from "@/components/Input/CategorySelect";
 
 type DonorOption = { _id: string; business_name: string };
 
 type CreateDonationInput = {
   description: string;
   donor_id: string;
-  pickup_window_start: string; // ISO "YYYY-MM-DDTHH:mm"
-  pickup_window_end: string;   // ISO "YYYY-MM-DDTHH:mm"
+  pickup_window_start: string;
+  pickup_window_end: string;
   quantity: number;
   title: string;
   status: "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED";
@@ -28,18 +29,14 @@ function todayISODate(): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-
 function nowISOTimeHM(): string {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 }
-
-function combineISO(date: string, time: string): string {
-  // returns "YYYY-MM-DDTHH:mm"
-  return `${date}T${time}`;
-}
+// returns "YYYY-MM-DDTHH:mm"
+const combineISO = (date: string, time: string) => `${date}T${time}`;
 
 export default function Donate() {
   const { userId } = useAuth();
@@ -59,10 +56,13 @@ export default function Donate() {
   const [donor_id, setDonorId] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<FoodCategory>("Bakery");
+
+  // default that exists in our presets
+  const [category, setCategory] = useState<FoodCategory>("Prepared Meals");
+
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // NEW: split date/time (24h) inputs with hints
+  // split date/time inputs
   const [startDate, setStartDate] = useState(todayISODate());
   const [startTime, setStartTime] = useState(nowISOTimeHM());
   const [endDate, setEndDate] = useState(todayISODate());
@@ -77,7 +77,6 @@ export default function Donate() {
     event.preventDefault();
     const now = new Date();
 
-    // validations
     if (!donor_id || !title || !description || !quantity || !startDate || !startTime || !endDate || !endTime) {
       setErrorMessage("Please fill out all required fields.");
       return;
@@ -85,7 +84,6 @@ export default function Donate() {
 
     const start = new Date(pickupStartISO);
     const end = new Date(pickupEndISO);
-
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       setErrorMessage("Please enter a valid date and time (24h format).");
       return;
@@ -112,19 +110,19 @@ export default function Donate() {
       quantity,
       title,
       status: "AVAILABLE",
-      category,
+      category, // still a plain string
     };
 
     try {
       await createDonation(payload as unknown as Record<string, unknown>);
       toast.success("Donation posted!");
 
-      // reset to sensible defaults
+      // reset fields
       setDonorId("");
       setTitle("");
       setDescription("");
       setQuantity(0);
-      setCategory("Bakery");
+      setCategory("Prepared Meals");
       const today = todayISODate();
       const nowHM = nowISOTimeHM();
       setStartDate(today);
@@ -192,22 +190,14 @@ export default function Donate() {
             min={1}
           />
 
-          {/* Category */}
-          <div className="grid gap-1">
-            <label className="label">Select Category</label>
-            <select
-              className="input"
-              value={category}
-              onChange={(e) => setCategory(e.target.value as FoodCategory)}
-              required
-            >
-              {FOOD_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Category (creatable) */}
+          <CategorySelect
+            label="Category"
+            value={category}
+            onChange={(v) => setCategory(v)}
+            presets={PRESET_FOOD_CATEGORIES}
+            helper="Pick a preset or type your own (e.g., 'Gluten‑Free', 'Halal')."
+          />
 
           {/* Pickup window */}
           <div className="grid gap-2">

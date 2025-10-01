@@ -1,12 +1,29 @@
 "use client";
 
 import { SignUpButton } from "@clerk/nextjs";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Register() {
+  const router = useRouter();
+
   return (
     <section className="grid gap-4 max-w-md">
-      <h2 className="text-2xl font-semibold">🔐Register</h2>
+      {/* Top bar with Back */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={() => {
+            if (window.history.length > 1) router.back();
+            else router.push("/login");
+          }}
+        >
+          ← Back
+        </button>
+      </div>
+
+      <h2 className="text-2xl font-semibold">🔐 Register</h2>
+
       <div className="card grid gap-4 p-6">
         <p className="text-subtext">Create an account to start donating or claiming food.</p>
         <div className="flex flex-wrap gap-2">
