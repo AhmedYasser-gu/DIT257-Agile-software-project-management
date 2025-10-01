@@ -10,6 +10,7 @@ export const createDonation = mutation(async ({ db }, donationData) => {
     title,
     status,
     category,
+    images,
   } = donationData as {
     description: string;
     donor_id: string;
@@ -19,6 +20,7 @@ export const createDonation = mutation(async ({ db }, donationData) => {
     title: string;
     status: "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED";
     category: string;
+    images?: string[];
   };
 
   const quantityInt = BigInt(quantity);
@@ -30,8 +32,9 @@ export const createDonation = mutation(async ({ db }, donationData) => {
     pickup_window_end,
     quantity: quantityInt,
     title,
-    status,
+    status: status as any,
     category,
+    images: (images ?? []) as any,
   });
 
   return newDonation;
