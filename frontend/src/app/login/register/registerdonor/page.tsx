@@ -14,7 +14,7 @@ type DonorOption = { _id: string; name: string };
 
 export default function RegisterDonater() {
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, isLoaded } = useAuth();
   const { user } = useUser();
   const registerDonor = useMutation(api.functions.createUser.registerDonor);
   const donors = useQuery(api.functions.createUser.listDonors, {}) as
@@ -38,23 +38,27 @@ export default function RegisterDonater() {
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
 
-  // protect against accidental leave
+  // protect against accidental leave (but allow while submitting or after completion)
   useEffect(() => {
     const before = (e: BeforeUnloadEvent) => {
-      if (!completed) {
+      if (!completed && !submitting) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", before);
-    const pop = () => !completed && history.pushState(null, "", location.href);
+    const pop = () => {
+      if (!completed && !submitting) {
+        history.pushState(null, "", location.href);
+      }
+    };
     history.pushState(null, "", location.href);
     window.addEventListener("popstate", pop);
     return () => {
       window.removeEventListener("beforeunload", before);
       window.removeEventListener("popstate", pop);
     };
-  }, [completed]);
+  }, [completed, submitting]);
 
   const allValid = useMemo(() => {
     const hasUser = firstName.trim() && lastName.trim() && phone.trim();
@@ -80,7 +84,7 @@ export default function RegisterDonater() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!userId) {
+    if (!isLoaded || !userId) {
       setError("You must be signed in to register.");
       return;
     }
@@ -111,7 +115,7 @@ export default function RegisterDonater() {
         });
       }
       setCompleted(true);
-      router.replace("/dashboard");
+      window.location.assign("/dashboard");
     } catch {
       setError("Registration failed. Please try again.");
     } finally {
@@ -268,7 +272,7 @@ export default function RegisterDonater() {
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={!allValid || submitting}
+                disabled={!isLoaded || !userId || !allValid || submitting}
               >
                 {submitting ? "Registering..." : "Register"}
               </button>

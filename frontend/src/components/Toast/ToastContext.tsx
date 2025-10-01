@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 type ToastKind = "success" | "error" | "info";
@@ -41,13 +42,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const show = useCallback(
     (t: Omit<Toast, "id">) => {
       const id = `${Date.now()}-${idRef.current++}`;
-      const toast: Toast = { timeout: 3500, ...t, id };
+      const toast: Toast = { timeout: 5000, ...t, id };
       setToasts((list) => [...list, toast]);
-      if (toast.timeout && toast.timeout > 0) {
-        setTimeout(() => remove(id), toast.timeout);
-      }
     },
-    [remove]
+    []
   );
 
   const success = useCallback((title: string, message?: string, timeout?: number) => {
@@ -82,23 +80,50 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const color = (t: ToastKind) =>
+  t === "success" ? "bg-[#2ECC71]" : t === "error" ? "bg-[#E74C3C]" : "bg-[#3498DB]";
+
 function Toaster({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
-  const color = (t: ToastKind) =>
-    t === "success" ? "bg-[#2ECC71]" : t === "error" ? "bg-[#E74C3C]" : "bg-[#3498DB]";
   return (
-    <div className="fixed z-[60] top-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 w-[min(420px,96vw)]">
+    <div className="fixed z-[60] bottom-4 right-4 flex flex-col-reverse items-end gap-2 w-[min(420px,96vw)] pointer-events-none">
       {toasts.map((t) => (
-        <div key={t.id} className="card shadow-lg border border-[#E0E0E0] p-3 relative overflow-hidden bg-white">
-          <div className={`absolute inset-x-0 top-0 h-1 ${color(t.type)}`} />
-          <div className="pt-2">
-            <div className="font-medium text-[#212121]">{t.title}</div>
-            {t.message && <div className="text-xs mt-0.5 text-[#212121]/70">{t.message}</div>}
-            <button className="btn-outline mt-2 px-2 py-1 text-xs" onClick={() => onDismiss(t.id)}>
-              Dismiss
-            </button>
-          </div>
-        </div>
+        <ToastItem key={t.id} t={t} onDismiss={onDismiss} />
       ))}
+    </div>
+  );
+}
+
+function ToastItem({ t, onDismiss }: { t: Toast; onDismiss: (id: string) => void }) {
+  const duration = t.timeout && t.timeout > 0 ? t.timeout : 5000;
+  const [animate, setAnimate] = useState(false);
+
+  // Start countdown and auto-dismiss
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => onDismiss(t.id), duration);
+    const raf = requestAnimationFrame(() => setAnimate(true));
+    return () => {
+      clearTimeout(timeoutId);
+      cancelAnimationFrame(raf);
+    };
+  }, [t.id, duration, onDismiss]);
+
+  return (
+    <div className="card shadow-lg border border-[#E0E0E0] p-3 relative overflow-hidden bg-white pointer-events-auto">
+      <div
+        className={`absolute left-0 top-0 h-1 ${color(t.type)}`}
+        style={{ width: animate ? "0%" : "100%", transition: `width ${duration}ms linear` }}
+      />
+      <button
+        aria-label="Close"
+        className="absolute top-2 right-2 text-[#6B7280] hover:text-[#111827] text-sm"
+        onClick={() => onDismiss(t.id)}
+      >
+        ×
+      </button>
+      <div className="pt-2">
+        <div className="font-medium text-[#212121]">{t.title}</div>
+        {t.message && <div className="text-xs mt-0.5 text-[#212121]/70">{t.message}</div>}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { api } from "@/convexApi";
 import Access from "@/components/Access/Access";
 import Link from "next/link";
 import ConfirmDialog from "@/components/Modal/ConfirmDialog";
+import DetailsDialog from "@/components/Modal/DetailsDialog";
 import { useToast } from "@/components/Toast/ToastContext";
 
 // Charts (donor stats)
@@ -165,6 +166,8 @@ export default function Dashboard() {
 
   const [active, setActive] = useState<Tab>("available");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsDonation, setDetailsDonation] = useState<DonationRow | null>(null);
 
   const isReceiver = !!status?.registered && status?.userType === "receiver";
   const isDonor = !!status?.registered && status?.userType === "donor";
@@ -432,32 +435,38 @@ export default function Dashboard() {
                     {availableFiltered.map((d) => (
                       <li
                         key={d._id}
-                        className="card flex items-start justify-between gap-4"
+                        className="card donation-card flex items-start justify-between gap-4"
                       >
-                        <div className="grid gap-1">
-                          <div className="font-medium">{d.title}</div>
-                          <div className="text-sm text-subtext">
+                        <div className="grid gap-1 overflow-hidden">
+                          <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                          <div className="text-sm text-subtext line-clamp-2 break-anywhere">
                             {d.category} · Qty: {fmtQty(d.quantity)} ·{" "}
                             {d.donor?.business_name ?? "Unknown donor"}
                           </div>
-                          <div className="text-xs text-subtext">
+                          <div className="text-xs text-subtext line-clamp-2 break-anywhere">
                             Pickup: {d.pickup_window_start} →{" "}
                             {d.pickup_window_end}
                           </div>
                           {d.description && (
-                            <div className="text-sm">{d.description}</div>
+                            <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>
                           )}
                         </div>
                         <div className="flex gap-2">
                           <button
-                            className="btn-primary"
+                            className="btn-primary btn-action"
                             onClick={() => setPendingId(d._id)}
                           >
                             Claim
                           </button>
-                          <Link className="btn-outline" href="/explore">
+                          <button
+                            className="btn-outline btn-action"
+                            onClick={() => {
+                              setDetailsDonation(d);
+                              setDetailsOpen(true);
+                            }}
+                          >
                             Explore Details
-                          </Link>
+                          </button>
                         </div>
                       </li>
                     ))}
@@ -535,6 +544,12 @@ export default function Dashboard() {
               onConfirm={doClaim}
               onCancel={() => setPendingId(null)}
             />
+
+            <DetailsDialog
+              open={detailsOpen}
+              donation={detailsDonation}
+              onClose={() => setDetailsOpen(false)}
+            />
           </>
         )}
 
@@ -599,17 +614,17 @@ export default function Dashboard() {
                   {donorLists.OPEN.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold">{d.title}</h5>
-                      <p className="text-sm text-gray-600">
+                      <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                      <p className="text-sm text-gray-600 line-clamp-1">
                         Qty: {fmtQty(d.quantity)} · Category: {d.category}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 line-clamp-1">
                         Pickup: {d.pickup_window_start} → {d.pickup_window_end}
                       </p>
                       {d.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                           {d.description}
                         </p>
                       )}
@@ -644,17 +659,17 @@ export default function Dashboard() {
                   {donorLists.CLAIMED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold">{d.title}</h5>
-                      <p className="text-sm text-gray-600">
+                      <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                      <p className="text-sm text-gray-600 line-clamp-1">
                         Qty: {fmtQty(d.quantity)} · Category: {d.category}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 line-clamp-1">
                         Pickup: {d.pickup_window_start} → {d.pickup_window_end}
                       </p>
                       {d.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                           {d.description}
                         </p>
                       )}
@@ -689,17 +704,17 @@ export default function Dashboard() {
                   {donorLists.EXPIRED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold">{d.title}</h5>
-                      <p className="text-sm text-gray-600">
+                      <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                      <p className="text-sm text-gray-600 line-clamp-1">
                         Qty: {fmtQty(d.quantity)} · Category: {d.category}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 line-clamp-1">
                         Pickup: {d.pickup_window_start} → {d.pickup_window_end}
                       </p>
                       {d.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                           {d.description}
                         </p>
                       )}

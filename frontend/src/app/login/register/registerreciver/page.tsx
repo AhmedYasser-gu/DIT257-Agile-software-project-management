@@ -8,7 +8,7 @@ import Access from "@/components/Access/Access";
 
 export default function RegisterReciver() {
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, isLoaded } = useAuth();
   const { user } = useUser();
   const registerReceiver = useMutation(api.functions.createUser.registerReceiver);
   const charities = useQuery(api.functions.createUser.listCharities, {});
@@ -31,14 +31,14 @@ export default function RegisterReciver() {
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (!completed) {
+      if (!completed && !submitting) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handler);
     const handlePop = () => {
-      if (!completed) {
+      if (!completed && !submitting) {
         history.pushState(null, "", location.href);
       }
     };
@@ -48,7 +48,7 @@ export default function RegisterReciver() {
       window.removeEventListener("beforeunload", handler);
       window.removeEventListener("popstate", handlePop);
     };
-  }, [completed]);
+  }, [completed, submitting]);
 
   useEffect(() => {
     if (user) {
@@ -77,7 +77,7 @@ export default function RegisterReciver() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!userId) {
+    if (!isLoaded || !userId) {
       setError("You must be signed in to register.");
       return;
     }
@@ -115,7 +115,7 @@ export default function RegisterReciver() {
         } as any);
       }
       setCompleted(true);
-      router.replace("/dashboard");
+      window.location.assign("/dashboard");
     } catch (err) {
       setError("Registration failed. Please try again.");
     } finally {
@@ -194,7 +194,7 @@ export default function RegisterReciver() {
               </>
             )}
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button type="submit" className="btn-primary" disabled={!allValid || submitting}>
+            <button type="submit" className="btn-primary" disabled={!isLoaded || !userId || !allValid || submitting}>
               {submitting ? "Registering..." : "Register"}
             </button>
           </form>

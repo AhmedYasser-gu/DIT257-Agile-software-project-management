@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convexApi";
 
@@ -26,6 +26,7 @@ export default function Access({
   children,
 }: AccessProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { userId, isLoaded } = useAuth();
   const status = useQuery(
     api.functions.createUser.getRegistrationStatus,
@@ -37,7 +38,12 @@ export default function Access({
   // Only block when we need status for role-based gating via allowUserTypes.
   const needsStatus = ((allowUserTypes && allowUserTypes.length > 0) ? true : false) && !!userId;
   const deferAuthForRegistration = !!requireUnregistered;
-  const isChecking = (!deferAuthForRegistration && !isLoaded) || (needsStatus && status === undefined);
+  const onRegistrationRoute = (pathname ?? "").startsWith("/login/register");
+  const shouldGateRegistrationCheck = !!userId && !onRegistrationRoute;
+  const isChecking =
+    (!deferAuthForRegistration && !isLoaded) ||
+    (needsStatus && status === undefined) ||
+    (shouldGateRegistrationCheck && status === undefined);
 
   let notAllowed = false;
   let redirectTo: string | null = null;
@@ -51,7 +57,13 @@ export default function Access({
         // Public page; allowed
       }
     } else {
-      if (allowIfLoggedOut) {
+      // If user is logged in but not registered in Convex, always redirect to register flow
+      if (!onRegistrationRoute && status && !status.registered) {
+        notAllowed = true;
+        redirectTo = "/login/register";
+      } else if (allowIfLoggedOut) {
+        // Logged in users should not see pages marked allowIfLoggedOut (e.g., login page)
+        // If they are already registered, send them home; if not, the above rule already handled it.
         notAllowed = true;
         redirectTo = "/";
       } else {
