@@ -1,7 +1,6 @@
 "use client";
-
 import Access from "@/components/Access/Access";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import Skeleton from "@/components/Feedback/Skeleton";
@@ -35,13 +34,24 @@ type AvailableDonation = {
 const toNum = (x: number | bigint) => (typeof x === "bigint" ? Number(x) : x);
 
 export default function Explore() {
-  const data = useQuery(
-    api.functions.listAvailableDonations.listAvailableDonations
-  ) as AvailableDonation[] | undefined;
+  const data = useQuery(api.functions.listAvailableDonations.listAvailableDonations) as
+    | AvailableDonation[]
+    | undefined;
 
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("soonest");
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+
+  // device location
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setMe(null),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
 
   const cats = useMemo(() => {
     const c = new Set<string>();
@@ -64,36 +74,25 @@ export default function Explore() {
     L.sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
       if (sort === "newest") return (b._id ?? "").localeCompare(a._id ?? "");
-      const ae =
-        new Date((a.pickup_window_end || "").replace(" ", "T")).getTime() ||
-        Infinity;
-      const be =
-        new Date((b.pickup_window_end || "").replace(" ", "T")).getTime() ||
-        Infinity;
+      const ae = new Date((a.pickup_window_end || "").replace(" ", "T")).getTime() || Infinity;
+      const be = new Date((b.pickup_window_end || "").replace(" ", "T")).getTime() || Infinity;
       return ae - be;
     });
     return L;
   }, [data, q, cat, sort]);
 
-  // Map points from items that have coordinates
   const points: MapPoint[] = useMemo(
     () =>
       (list ?? [])
-        .filter(
-          (d) => Number.isFinite(d.donor?.lat) && Number.isFinite(d.donor?.lng)
-        )
+        .filter((d) => Number.isFinite(d.donor?.lat) && Number.isFinite(d.donor?.lng))
         .map((d) => ({
           id: d._id,
           lat: d.donor!.lat as number,
           lng: d.donor!.lng as number,
           donorName: d.donor?.business_name,
-          title: d.title, // fallback for label
+          title: d.title,
           items: d.description
-            ? d.description
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-                .slice(0, 6)
+            ? d.description.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6)
             : undefined,
           status: d.status,
           detailUrl: "/dashboard",
@@ -108,33 +107,18 @@ export default function Explore() {
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-2xl font-semibold">Nearby donations</h2>
-            <p className="text-subtext text-sm">
-              Browse and claim food that’s still good!
-            </p>
+            <p className="text-subtext text-sm">Browse and claim food that’s still good!</p>
           </div>
           <div className="flex gap-2">
-            <input
-              className="input"
-              placeholder="Search (title, description, donor)…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <select
-              className="input"
-              value={cat}
-              onChange={(e) => setCat(e.target.value)}
-            >
+            <input className="input" placeholder="Search (title, description, donor)…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <select className="input" value={cat} onChange={(e) => setCat(e.target.value)}>
               {cats.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </select>
-            <select
-              className="input"
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-            >
+            <select className="input" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
               <option value="soonest">Soonest pickup</option>
               <option value="newest">Newest</option>
               <option value="title">Title</option>
@@ -143,14 +127,14 @@ export default function Explore() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Map */}
           <MapViewOpenLayers
             className="order-1 md:order-none"
             points={points}
+            userLocation={me}
             height={360}
+            emptyMessage="No donors with avaliable location shared yet."
           />
 
-          {/* List */}
           <div className="order-2 md:order-none">
             {data === undefined && (
               <div className="grid gap-2">
@@ -161,10 +145,7 @@ export default function Explore() {
             )}
 
             {data && list.length === 0 && (
-              <Empty
-                title="No donations match your filters."
-                hint="Try clearing the search or switching category."
-              />
+              <Empty title="No donations match your filters." hint="Try clearing the search or switching category." />
             )}
 
             {data && list.length > 0 && (
@@ -172,10 +153,7 @@ export default function Explore() {
                 {list.map((d) => {
                   const mins = minutesRemaining(d.pickup_window_end);
                   return (
-                    <li
-                      key={d._id}
-                      className="card flex items-start justify-between gap-4"
-                    >
+                    <li key={d._id} className="card flex items-start justify-between gap-4">
                       <div className="grid gap-1">
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{d.title}</div>
@@ -183,19 +161,13 @@ export default function Explore() {
                           <StatusBadge status={d.status} />
                         </div>
                         <div className="text-sm text-subtext">
-                          Qty: {String(toNum(d.quantity))} ·{" "}
-                          {d.donor?.business_name ?? "Unknown donor"}
+                          Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
                         </div>
                         <div className="text-xs text-subtext">
-                          Pickup: {fmt(d.pickup_window_start)} →{" "}
-                          {fmt(d.pickup_window_end)}
-                          {Number.isFinite(mins) && mins > 0 && (
-                            <span> · {mins} min left</span>
-                          )}
+                          Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
+                          {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
                         </div>
-                        {d.description && (
-                          <div className="text-sm">{d.description}</div>
-                        )}
+                        {d.description && <div className="text-sm">{d.description}</div>}
                       </div>
                       <div className="flex gap-2">
                         <Link className="btn-primary" href="/dashboard">

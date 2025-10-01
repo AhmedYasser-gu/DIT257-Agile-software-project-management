@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { UserProfile } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import Access from "@/components/Access/Access";
+import MapViewOpenLayers from "@/components/Map/MapViewOpenLayers";
 
 type ActiveTab = "clerk" | "app";
 
@@ -26,6 +27,8 @@ type ProfileDonor = {
   business_phone: string;
   address: string;
   verified: boolean;
+  lat?: number | null;
+  lng?: number | null;
 } | null;
 
 type ProfileReceiver = {
@@ -69,7 +72,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("clerk");
   const [editMode, setEditMode] = useState(false);
 
-  //  pass "skip" until userId exists (prevents {} args)
+  // pass "skip" until userId exists (prevents {} args / validation error)
   const profile = useQuery(
     api.functions.createUser.getProfileByClerkId,
     userId ? { clerk_id: userId } : "skip"
@@ -96,6 +99,8 @@ export default function ProfilePage() {
         business_email: orig.donor?.business_email ?? "",
         business_phone: orig.donor?.business_phone ?? "",
         address: orig.donor?.address ?? "",
+        lat: orig.donor?.lat ?? null,
+        lng: orig.donor?.lng ?? null,
         verified: orig.donor?.verified ?? false,
       };
     }
@@ -122,7 +127,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!original || original === null || original === undefined) return;
-    // When result is the “not registered” shape: { user, type: null }
     setForm(buildFormFromOriginal(original));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [original && "user" in (original as any) ? (original as any).user._id : undefined, (original as any)?.type]);
@@ -150,9 +154,9 @@ export default function ProfilePage() {
       if (newVal !== oldVal) payload[key] = newVal;
     };
 
-    addIfChanged("first_name", form.first_name, original.user.first_name);
-    addIfChanged("last_name", form.last_name, original.user.last_name);
-    addIfChanged("phone", form.phone, original.user.phone);
+    addIfChanged("first_name", form.first_name, (original as any).user.first_name);
+    addIfChanged("last_name", form.last_name, (original as any).user.last_name);
+    addIfChanged("phone", form.phone, (original as any).user.phone);
 
     if ((original as any).type === "donor") {
       payload["donor_id"] = form.donor_id;
@@ -160,6 +164,8 @@ export default function ProfilePage() {
       addIfChanged("business_email", form.business_email, (original as any).donor?.business_email ?? "");
       addIfChanged("business_phone", form.business_phone, (original as any).donor?.business_phone ?? "");
       addIfChanged("address", form.address, (original as any).donor?.address ?? "");
+      addIfChanged("lat", form.lat ?? null, (original as any).donor?.lat ?? null);
+      addIfChanged("lng", form.lng ?? null, (original as any).donor?.lng ?? null);
     }
 
     if ((original as any).type === "receiver") {
@@ -191,6 +197,55 @@ export default function ProfilePage() {
 
     await updateProfile(payload);
     setEditMode(false);
+  };
+
+  // --- geocode helpers (donor edit) ---
+  const geocodeTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!editMode) return;
+    if ((original as any)?.type !== "donor") return;
+    if (!form?.address || !form.address.trim()) return;
+    if (geocodeTimer.current) window.clearTimeout(geocodeTimer.current);
+    geocodeTimer.current = window.setTimeout(async () => {
+      try {
+        const url = new URL("https://nominatim.openstreetmap.org/search");
+        url.searchParams.set("q", form.address);
+        url.searchParams.set("format", "json");
+        url.searchParams.set("limit", "1");
+        const r = await fetch(url.toString(), {
+          headers: { "Accept-Language": "en", "User-Agent": "NoLeftovers/1.0" },
+        });
+        const j = (await r.json()) as Array<{ lat: string; lon: string }>;
+        if (j?.[0]) {
+          const lat = parseFloat(j[0].lat);
+          const lng = parseFloat(j[0].lon);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            setForm((f: any) => ({ ...f, lat, lng }));
+          }
+        }
+      } catch {}
+    }, 450);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, form?.address]);
+
+  const onPick = async (pos: { lat: number; lng: number } | null) => {
+    if ((original as any)?.type !== "donor") return;
+    setForm((f: any) => ({ ...f, lat: pos?.lat ?? null, lng: pos?.lng ?? null }));
+    if (!pos) return;
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/reverse");
+      url.searchParams.set("lat", String(pos.lat));
+      url.searchParams.set("lon", String(pos.lng));
+      url.searchParams.set("format", "json");
+      const r = await fetch(url.toString(), {
+        headers: { "Accept-Language": "en", "User-Agent": "NoLeftovers/1.0" },
+      });
+      const j = await r.json();
+      const disp = j?.display_name as string | undefined;
+      if (disp && (!form?.address || form.address.length < 8)) {
+        setForm((f: any) => ({ ...f, address: disp }));
+      }
+    } catch {}
   };
 
   const Field = ({
@@ -272,40 +327,54 @@ export default function ProfilePage() {
                       onChange={(v) => setForm({ ...form, last_name: v })}
                     />
                   </div>
-                  <Field
-                    label="Phone"
-                    value={form.phone}
-                    onChange={(v) => setForm({ ...form, phone: v })}
-                  />
-                  <Field label="Account type" value={accountType} readOnly />
+                  <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+                  <Field label="Account type" value={
+                    (original as any)?.type === "donor" ? "Donor" :
+                    (original as any)?.type === "receiver" ? "Receiver" : "—"
+                  } readOnly />
 
                   {(original as any)?.type === "donor" && (
                     <div className="grid gap-3">
                       <h4 className="font-medium">Business</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Field
-                          label="Business name"
-                          value={form.business_name}
-                          onChange={(v) => setForm({ ...form, business_name: v })}
-                        />
-                        <Field
-                          label="Business email"
-                          value={form.business_email}
-                          onChange={(v) => setForm({ ...form, business_email: v })}
-                        />
+                        <Field label="Business name" value={form.business_name} onChange={(v) => setForm({ ...form, business_name: v })} />
+                        <Field label="Business email" value={form.business_email} onChange={(v) => setForm({ ...form, business_email: v })} />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Field label="Business phone" value={form.business_phone} onChange={(v) => setForm({ ...form, business_phone: v })} />
+                        <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+                      </div>
+
+                      {/* Map picker visible in edit mode */}
+                      {editMode && (
+                        <div className="grid gap-1">
+                          <div className="label">Business location</div>
+                          <div className="text-xs text-subtext mb-2">Click map or edit the address; both stay in sync.</div>
+                          <MapViewOpenLayers
+                            value={
+                              Number.isFinite(form?.lat) && Number.isFinite(form?.lng)
+                                ? { lat: Number(form.lat), lng: Number(form.lng) }
+                                : undefined
+                            }
+                            onChange={onPick}
+                            height={260}
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
                         <Field
-                          label="Business phone"
-                          value={form.business_phone}
-                          onChange={(v) => setForm({ ...form, business_phone: v })}
+                          label="Latitude"
+                          value={form.lat === null || form.lat === undefined ? "" : String(form.lat)}
+                          onChange={(v) => setForm({ ...form, lat: v ? Number(v) : null })}
                         />
                         <Field
-                          label="Address"
-                          value={form.address}
-                          onChange={(v) => setForm({ ...form, address: v })}
+                          label="Longitude"
+                          value={form.lng === null || form.lng === undefined ? "" : String(form.lng)}
+                          onChange={(v) => setForm({ ...form, lng: v ? Number(v) : null })}
                         />
                       </div>
+
                       <Field label="Verified" value={form.verified ? "Yes" : "No"} readOnly />
                     </div>
                   )}
@@ -330,11 +399,7 @@ export default function ProfilePage() {
                             }
                             readOnly={!editMode || !(original as any)?.charity_owner}
                           />
-                          <Field
-                            label="Verified"
-                            value={form.charity.verified ? "Yes" : "No"}
-                            readOnly
-                          />
+                          <Field label="Verified" value={form.charity.verified ? "Yes" : "No"} readOnly />
                           <Field
                             label="Contact phone"
                             value={form.charity.contact_phone}

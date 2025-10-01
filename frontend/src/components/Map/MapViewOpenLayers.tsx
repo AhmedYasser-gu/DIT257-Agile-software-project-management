@@ -15,7 +15,10 @@ import CircleStyle from "ol/style/Circle";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Overlay from "ol/Overlay";
+import type { FeatureLike } from "ol/Feature";
 import "ol/ol.css";
+
+const PARIS = [2.35, 48.85];
 
 function markerStyle(color = "#4CAF50") {
   return new Style({
@@ -32,211 +35,271 @@ export type MapPoint = {
   id: string;
   lat: number;
   lng: number;
-  title?: string;       // donation title (fallback label)
-  donorName?: string;   // business/donor display name
-  items?: string[];     // compact list of items (["Bread", "Salad"])
+  title?: string;
+  donorName?: string;
+  items?: string[];
   status?: string;
   detailUrl?: string;
 };
 
+type LatLng = { lat: number; lng: number };
+
 export default function MapViewOpenLayers({
+  // viewer
+  points,
+  userLocation,
+  // picker
   value,
-  onChange, // optional: picker mode
-  points,   // optional: viewer mode
-  height = 220,
+  onChange,
+  // ui
+  height = 360,
   className,
+  showLegend = true,
+  emptyMessage = "No donor locations with pins around you yet.",
 }: {
-  value?: { lat: number; lng: number } | undefined;
-  onChange?: (pos: { lat: number; lng: number } | null) => void;
   points?: MapPoint[];
-  height?: number;
+  userLocation?: LatLng | null;
+  value?: LatLng;
+  onChange?: (pos: LatLng | null) => void;
+  height?: number | string;
   className?: string;
+  showLegend?: boolean;
+  emptyMessage?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
-  const sourceRef = useRef<VectorSource | null>(null);
-  const pickerFeatureRef = useRef<Feature<Point> | null>(null);
-
-  // Label overlay refs
+  const srcPinsRef = useRef<VectorSource | null>(null);
+  const srcPickerRef = useRef<VectorSource | null>(null);
+  const userFeatRef = useRef<Feature<Point> | null>(null);
+  const pickerFeatRef = useRef<Feature<Point> | null>(null);
   const overlayRef = useRef<Overlay | null>(null);
   const overlayElRef = useRef<HTMLDivElement | null>(null);
+
+  const hasPins = (points?.length ?? 0) > 0;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     const base = new TileLayer({ source: new OSM() });
-    const source = new VectorSource();
-    sourceRef.current = source;
 
-    const vector = new VectorLayer({
-      source,
-      style: markerStyle(),
+    const srcPins = new VectorSource();
+    const srcPicker = new VectorSource();
+    srcPinsRef.current = srcPins;
+    srcPickerRef.current = srcPicker;
+
+    const pinsLayer = new VectorLayer({
+      source: srcPins,
+      style: (f: FeatureLike) => f.get("style") ?? markerStyle("#3B82F6"),
+    });
+
+    const pickerLayer = new VectorLayer({
+      source: srcPicker,
+      style: markerStyle("#4CAF50"),
     });
 
     const map = new Map({
       target: containerRef.current,
-      layers: [base, vector],
+      layers: [base, pinsLayer, pickerLayer],
       view: new View({
-        center: fromLonLat([2.35, 48.85]),
+        center: fromLonLat(PARIS),
         zoom: 3,
       }),
       controls: [],
     });
     mapRef.current = map;
 
-    // Create overlay element (the floating label)
-    const el = document.createElement("div");
-    el.className = "ol-marker-label";
-    overlayElRef.current = el;
-
+    // overlay label
+    const label = document.createElement("div");
+    label.className = "rounded-lg bg-white px-3 py-2 text-xs shadow-md border";
+    overlayElRef.current = label;
     const overlay = new Overlay({
-      element: el,
-      offset: [0, -18], // position above marker
+      element: label,
+      offset: [0, -18],
       positioning: "bottom-center",
       stopEvent: false,
     });
     overlayRef.current = overlay;
     map.addOverlay(overlay);
 
-    // Picker click (if enabled)
+    // picking
     map.on("singleclick", (evt) => {
-      if (!onChange) return; // viewer mode: ignore
+      if (!onChange) return;
       const [lng, lat] = toLonLat(evt.coordinate);
-      setPickerMarker(lat, lng);
+      setPicker(lat, lng);
       onChange({ lat, lng });
     });
 
-    // Hover labels
+    // hover label
     map.on("pointermove", (evt) => {
-      if (!overlayRef.current || !overlayElRef.current) return;
-
-      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
-      if (feature) {
-        const data = feature.get("data") as MapPoint | undefined;
-        if (data) {
-          overlayElRef.current.innerHTML = renderLabelHTML(data);
-          overlayRef.current.setPosition(evt.coordinate);
-          overlayElRef.current.style.display = "block";
-          return;
-        }
+      if (!overlayElRef.current) return;
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f) as Feature | undefined;
+      if (!feature) {
+        overlayElRef.current.style.display = "none";
+        return;
       }
-      overlayElRef.current.style.display = "none";
+      const d = feature.get("data") as MapPoint | undefined;
+      if (!d) {
+        overlayElRef.current.style.display = "none";
+        return;
+      }
+      overlayElRef.current.innerHTML = `
+        <div class="font-medium">${escapeHTML(d.donorName || d.title || "Pickup")}</div>
+        ${
+          d.items?.length
+            ? `<div class="text-subtext">${escapeHTML(
+                d.items.slice(0, 3).join(" · ") + (d.items.length > 3 ? " +" : "")
+              )}</div>`
+            : ""
+        }
+      `;
+      overlay.setPosition(evt.coordinate);
+      overlayElRef.current.style.display = "block";
     });
 
-    // Hide overlay when pointer leaves the map
     map.getViewport().addEventListener("mouseleave", () => {
-      if (overlayElRef.current) overlayElRefRefSafe().style.display = "none";
+      if (overlayElRef.current) overlayElRef.current.style.display = "none";
     });
-
-    function overlayElRefRefSafe() {
-      // helper for TS narrow
-      return overlayElRef.current as HTMLDivElement;
-    }
 
     return () => {
       map.setTarget(undefined);
       mapRef.current = null;
-      sourceRef.current = null;
-      pickerFeatureRef.current = null;
+      srcPinsRef.current = null;
+      srcPickerRef.current = null;
+      pickerFeatRef.current = null;
+      userFeatRef.current = null;
       overlayRef.current = null;
       overlayElRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onChange]);
 
-  // Picker: reflect external value
+  // draw pins + user marker + fit
   useEffect(() => {
-    if (!mapRef.current || !value) return;
-    if (Number.isFinite(value.lat) && Number.isFinite(value.lng)) {
-      setPickerMarker(value.lat, value.lng);
-      mapRef.current.getView().animate({
-        center: fromLonLat([value.lng, value.lat]),
-        zoom: 13,
-        duration: 200,
+    const map = mapRef.current;
+    const srcPins = srcPinsRef.current;
+    if (!map || !srcPins) return;
+
+    srcPins.clear();
+
+    // user marker (blue)
+    if (userLocation && Number.isFinite(userLocation.lat) && Number.isFinite(userLocation.lng)) {
+      const f = new Feature({
+        geometry: new Point(fromLonLat([userLocation.lng, userLocation.lat])),
       });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.lat, value?.lng]);
-
-  // Viewer: render points (and keep picker marker if present)
-  useEffect(() => {
-    if (!sourceRef.current || !mapRef.current) return;
-
-    const src = sourceRef.current;
-    const pickerGeom = pickerFeatureRef.current?.getGeometry();
-    src.clear();
-
-    // Re-add picker marker if set
-    if (pickerGeom && pickerFeatureRef.current) {
-      src.addFeature(pickerFeatureRef.current);
+      f.set("style", markerStyle("#2563EB"));
+      srcPins.addFeature(f);
+      userFeatRef.current = f;
+    } else {
+      userFeatRef.current = null;
     }
 
-    if (points && points.length > 0) {
-      // Add viewer features with their data for labels
-      for (const p of points) {
-        const f = new Feature({
-          geometry: new Point(fromLonLat([p.lng, p.lat])),
+    // donation pins (indigo)
+    for (const p of points ?? []) {
+      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+      const f = new Feature({ geometry: new Point(fromLonLat([p.lng, p.lat])) });
+      f.set("data", p);
+      f.set("style", markerStyle("#3B82F6"));
+      srcPins.addFeature(f);
+    }
+
+    // fit bounds if we have anything
+    const feats = srcPins.getFeatures();
+    if (feats.length > 0) {
+      try {
+        map.getView().fit(srcPins.getExtent(), {
+          padding: [40, 40, 40, 40],
+          maxZoom: 15,
+          duration: 250,
         });
-        f.set("data", p);
-        f.setStyle(markerStyle("#3B82F6"));
-        src.addFeature(f);
-      }
-
-      const view = mapRef.current.getView();
-      const currentZoom = view.getZoom() ?? 0;
-      if (currentZoom < 5) {
-        view.animate({
-          center: fromLonLat([points[0].lng, points[0].lat]),
-          zoom: 11,
+      } catch {}
+    } else {
+      // fall back to user, then default
+      if (userLocation) {
+        map.getView().animate({
+          center: fromLonLat([userLocation.lng, userLocation.lat]),
+          zoom: 12,
           duration: 200,
         });
+      } else {
+        map.getView().setCenter(fromLonLat(PARIS));
+        map.getView().setZoom(3);
       }
-    } else {
-      // hide label if there are no viewer points
-      if (overlayElRef.current) overlayElRef.current.style.display = "none";
     }
-  }, [points]);
+  }, [JSON.stringify(points ?? []), userLocation?.lat, userLocation?.lng]);
 
-  function setPickerMarker(lat: number, lng: number) {
-    const src = sourceRef.current;
-    if (!src) return;
-    if (!pickerFeatureRef.current) {
-      pickerFeatureRef.current = new Feature({
+  // reflect picker value
+  useEffect(() => {
+    if (!value) return;
+    if (!Number.isFinite(value.lat) || !Number.isFinite(value.lng)) return;
+    setPicker(value.lat, value.lng);
+  }, [value?.lat, value?.lng]);
+
+  function setPicker(lat: number, lng: number) {
+    const srcPicker = srcPickerRef.current;
+    if (!srcPicker) return;
+    if (!pickerFeatRef.current) {
+      pickerFeatRef.current = new Feature({
         geometry: new Point(fromLonLat([lng, lat])),
       });
-      pickerFeatureRef.current.setStyle(markerStyle("#4CAF50"));
-      src.addFeature(pickerFeatureRef.current);
+      pickerFeatRef.current.setStyle(markerStyle("#4CAF50"));
+      srcPicker.addFeature(pickerFeatRef.current);
     } else {
-      pickerFeatureRef.current.setGeometry(new Point(fromLonLat([lng, lat])));
-      src.changed();
+      pickerFeatRef.current.setGeometry(new Point(fromLonLat([lng, lat])));
+      srcPicker.changed();
     }
   }
 
-  return <div ref={containerRef} className={className} style={{ height }} />;
-}
+  // If there are no donor pins AND no user marker, show a nice empty state card
+  if (!hasPins && !userLocation) {
+    return (
+      <div className={className}>
+        <div className="card p-6">
+          <div className="font-medium mb-1">Map</div>
+          <div className="text-subtext text-sm">{emptyMessage}</div>
+        </div>
+      </div>
+    );
+  }
 
-// --- Label helpers ---
+  return (
+    <div className={className}>
+      <div className="card overflow-hidden p-0 relative">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div>
+            <div className="font-medium">Map</div>
+            <div className="text-xs text-subtext">
+              {hasPins ? "Donations by location" : "Your location"}
+            </div>
+          </div>
+          <div className="text-xs text-subtext">
+            {hasPins ? `Total: ${points?.length ?? 0}` : ""}
+          </div>
+        </div>
+        <div ref={containerRef} style={{ height }} className="w-full" />
 
-function renderLabelHTML(p: MapPoint) {
-  const name = p.donorName || p.title || "Pickup point";
-  const itemsLine =
-    p.items && p.items.length
-      ? p.items.slice(0, 3).join(" · ") + (p.items.length > 3 ? " +" : "")
-      : p.title || "";
-  return `
-    <div class="ol-label-card">
-      <div class="ol-label-name">${escapeHTML(name)}</div>
-      ${
-        itemsLine
-          ? `<div class="ol-label-items">${escapeHTML(itemsLine)}</div>`
-          : ""
-      }
+        {showLegend && (
+          <div className="absolute bottom-3 right-3 rounded-md bg-white/95 px-3 py-2 shadow-md text-xs border">
+            <div className="font-medium mb-1">Legend</div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#eb5325ff" }} />
+              You
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#3B82F6" }} />
+              Donor
+            </div>
+            {onChange && (
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#4CAF50" }} />
+                Selected
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
-  `;
+  );
 }
 
 function escapeHTML(s: string) {
-  return s.replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as const
-  )[c]!);
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }

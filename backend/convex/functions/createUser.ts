@@ -21,16 +21,16 @@ async function ensureUserByClerkId(
   return userId;
 }
 
-// Register donor: ensure user then create donor record if missing
+// Register donor
 export const registerDonor = mutation({
   args: {
     clerk_id: v.string(),
     first_name: v.string(),
     last_name: v.string(),
     phone: v.string(),
-    // Option A: join existing donor org
+    // Join existing org
     donors_id: v.optional(v.id("donors")),
-    // Option B: create new org inline (if donors_id not provided)
+    // Or create new
     address: v.optional(v.string()),
     business_name: v.optional(v.string()),
     business_email: v.optional(v.string()),
@@ -86,7 +86,7 @@ export const registerDonor = mutation({
   },
 });
 
-// Register receiver: ensure user then create individual and receiver rows
+// Register receiver
 export const registerReceiver = mutation({
   args: {
     clerk_id: v.string(),
@@ -321,6 +321,8 @@ export const getProfileByClerkId = query({
           business_phone: donor.business_phone,
           address: donor.address,
           verified: donor.verified,
+          lat: typeof donor.lat === "number" ? donor.lat : null,
+          lng: typeof donor.lng === "number" ? donor.lng : null,
         },
       };
     }
@@ -389,32 +391,33 @@ export const getProfileByClerkId = query({
 export const updateProfile = mutation({
   args: {
     user_id: v.id("users"),
-    // Always allowed
+    // user
     first_name: v.optional(v.string()),
     last_name: v.optional(v.string()),
     phone: v.optional(v.string()),
 
-    // Donor-specific (if editing as donor)
+    // donor
     donor_id: v.optional(v.id("donors")),
     business_name: v.optional(v.string()),
     business_email: v.optional(v.string()),
     business_phone: v.optional(v.string()),
     address: v.optional(v.string()),
+    lat: v.optional(v.union(v.number(), v.null())),
+    lng: v.optional(v.union(v.number(), v.null())),
 
-    // Receiver-specific
+    // receiver
     receiver_id: v.optional(v.id("recievers")),
     individuals_id: v.optional(v.id("individuals")),
     charity_id: v.optional(v.id("charities")),
     food_allergy: v.optional(v.string()),
 
-    // Charity organization fields (editable only by owners)
+    // charity editable by owners
     charity_name: v.optional(v.string()),
     charity_contact_phone: v.optional(v.string()),
     charity_contact_email: v.optional(v.string()),
     charity_address: v.optional(v.string()),
   },
   handler: async ({ db }, args) => {
-    // Update base user fields
     const { user_id, first_name, last_name, phone } = args;
     const updates: any = {};
     if (first_name !== undefined) updates.first_name = first_name;
@@ -424,7 +427,7 @@ export const updateProfile = mutation({
       await db.patch(user_id, updates);
     }
 
-    // Donor-specific
+    // donor updates
     if (args.donor_id) {
       // Ensure the user is an owner of this donor organization before editing its fields
       const membership = await db
@@ -439,12 +442,14 @@ export const updateProfile = mutation({
       if (args.business_email !== undefined) donorUpdates.business_email = args.business_email;
       if (args.business_phone !== undefined) donorUpdates.business_phone = args.business_phone;
       if (args.address !== undefined) donorUpdates.address = args.address;
+      if (args.lat !== undefined) donorUpdates.lat = args.lat === null ? undefined : args.lat;
+      if (args.lng !== undefined) donorUpdates.lng = args.lng === null ? undefined : args.lng;
       if (Object.keys(donorUpdates).length) {
         await db.patch(args.donor_id, donorUpdates);
       }
     }
 
-    // Receiver-specific
+    // receiver
     if (args.receiver_id) {
       // Verify receiver belongs to this user
       const receiverDoc = await db.get(args.receiver_id);
@@ -455,13 +460,13 @@ export const updateProfile = mutation({
       if (args.individuals_id && args.food_allergy !== undefined) {
         await db.patch(args.individuals_id, { food_allergy: args.food_allergy });
       }
-      // Update charity details when owner
-      if (args.charity_id && (
-        args.charity_name !== undefined ||
-        args.charity_contact_phone !== undefined ||
-        args.charity_contact_email !== undefined ||
-        args.charity_address !== undefined
-      )) {
+      if (
+        args.charity_id &&
+        (args.charity_name !== undefined ||
+          args.charity_contact_phone !== undefined ||
+          args.charity_contact_email !== undefined ||
+          args.charity_address !== undefined)
+      ) {
         const membership = await db
           .query("userInCharity")
           .withIndex("by_user", (q: any) => q.eq("user_id", user_id))
