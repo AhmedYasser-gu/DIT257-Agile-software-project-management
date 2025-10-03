@@ -488,3 +488,5 @@ export const updateProfile = mutation({
     return { ok: true } as const;
   },
 });
+
+export { ensureUserByClerkId };
