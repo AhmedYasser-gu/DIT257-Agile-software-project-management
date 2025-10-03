@@ -99,4 +99,17 @@ export default defineSchema({
     amount: v.int64(),
     status: claimedStatusValidator,
   }),
+
+  reviews: defineTable({
+    donor_id: v.id("donors"),
+    reciever_id: v.id("recievers"),
+    rating: v.number(),
+    comment: v.string(),
+  }),
+
+  responses: defineTable({
+    review_id: v.id("reviews"),
+    donor_id: v.id("donors"),
+    response: v.string(),
+  })
 });

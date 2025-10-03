@@ -22,6 +22,7 @@ import type * as functions_getAllDonors from "../functions/getAllDonors.js";
 import type * as functions_listAvailableDonations from "../functions/listAvailableDonations.js";
 import type * as functions_listMyClaims from "../functions/listMyClaims.js";
 import type * as functions_listMyDonations from "../functions/listMyDonations.js";
+import type * as functions_reviews from "../functions/reviews.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "functions/listAvailableDonations": typeof functions_listAvailableDonations;
   "functions/listMyClaims": typeof functions_listMyClaims;
   "functions/listMyDonations": typeof functions_listMyDonations;
+  "functions/reviews": typeof functions_reviews;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

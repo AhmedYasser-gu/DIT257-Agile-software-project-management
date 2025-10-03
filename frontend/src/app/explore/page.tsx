@@ -43,6 +43,24 @@ export default function Explore() {
   const [sort, setSort] = useState<SortKey>("soonest");
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
 
+
+  const donorIds = useMemo(
+    () => Array.from(new Set((data ?? []).map((d) => d.donor?._id).filter(Boolean))),
+    [data]
+  );
+
+  const donorReviews = useQuery(api.functions.reviews.getReviewsForDonors, {
+    donorIds: donorIds as string[],
+  }) as Record<string, { rating: number }[]> | undefined;
+
+
+  const getAvgRating = (donorId: string) => {
+    const reviews = donorReviews?.[donorId] ?? [];
+    if (!reviews.length) return null;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return sum / reviews.length;
+  };
+
   // device location
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -166,28 +184,47 @@ export default function Explore() {
                 {list.map((d) => {
                   const mins = minutesRemaining(d.pickup_window_end);
                   return (
-                    <li key={d._id} className="card donation-card flex items-start justify-between gap-4">
-                      <div className="grid gap-1 overflow-hidden">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
-                          <CategoryPill label={d.category} />
-                          <StatusBadge status={d.status} />
-                        </div>
-                        <div className="text-sm text-subtext line-clamp-2 break-anywhere">
-                          Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
-                        </div>
-                        <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                          Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
-                          {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
-                        </div>
-                        {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
+                  <li key={d._id} className="card donation-card flex items-start justify-between gap-4">
+                    <div className="grid gap-1 overflow-hidden">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                        <CategoryPill label={d.category} />
+                        <StatusBadge status={d.status} />
                       </div>
-                      <div className="flex gap-2">
-                        <Link className="btn-primary" href="/dashboard">
-                          Proceed
-                        </Link>
+                      <div className="text-sm text-subtext line-clamp-2 break-anywhere">
+                        Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
                       </div>
-                    </li>
+                      <div className="text-xs text-subtext line-clamp-2 break-anywhere">
+                        Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
+                        {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
+                      </div>
+                      {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
+
+                      {/* Reviews go here inside the same container */}
+                      {d.donor?._id && donorReviews && (
+                        <div className="text-sm line-clamp-2">
+                          {(() => {
+                            const avg = getAvgRating(d.donor._id);
+                            if (!avg) return "No reviews yet";
+                            const fullStars = Math.floor(avg);
+                            const halfStar = avg - fullStars >= 0.5;
+                            return (
+                              <>
+                                {"⭐".repeat(fullStars)}
+                                {halfStar && "✩"} ({avg.toFixed(1)})
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Link className="btn-primary" href="/dashboard">
+                        Proceed
+                      </Link>
+                    </div>
+                  </li>
                   );
                 })}
               </ul>
