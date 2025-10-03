@@ -38,16 +38,14 @@ type ProfileReceiver = {
   individuals_id: string | null;
   charity_id: string | null;
   individual: { _id: string; food_allergy: string | null } | null;
-  charity:
-    | {
-        _id: string;
-        charity_name: string;
-        contact_phone: string;
-        contact_email: string;
-        address: string;
-        verified: boolean;
-      }
-    | null;
+  charity: {
+    _id: string;
+    charity_name: string;
+    contact_phone: string;
+    contact_email: string;
+    address: string;
+    verified: boolean;
+  } | null;
 } | null;
 
 type ProfileResult =
@@ -131,7 +129,12 @@ export default function ProfilePage() {
     if (!original || original === null || original === undefined) return;
     setForm(buildFormFromOriginal(original));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [original && "user" in (original as any) ? (original as any).user._id : undefined, (original as any)?.type]);
+  }, [
+    original && "user" in (original as any)
+      ? (original as any).user._id
+      : undefined,
+    (original as any)?.type,
+  ]);
 
   const isLoading = !!userId && profile === undefined;
   const notRegistered = !!profile && (profile as any)?.type === null;
@@ -143,25 +146,54 @@ export default function ProfilePage() {
   };
 
   const onSave = async () => {
-    if (!original || !("user" in original) || !original.user?._id || !form) return;
+    if (!original || !("user" in original) || !original.user?._id || !form)
+      return;
     const payload: Record<string, unknown> = { user_id: original.user._id };
 
     const addIfChanged = (key: string, newVal: unknown, oldVal: unknown) => {
       if (newVal !== oldVal) payload[key] = newVal;
     };
 
-    addIfChanged("first_name", form.first_name, (original as any).user.first_name);
+    addIfChanged(
+      "first_name",
+      form.first_name,
+      (original as any).user.first_name
+    );
     addIfChanged("last_name", form.last_name, (original as any).user.last_name);
     addIfChanged("phone", form.phone, (original as any).user.phone);
 
     if ((original as any).type === "donor") {
       payload["donor_id"] = form.donor_id;
-      addIfChanged("business_name", form.business_name, (original as any).donor?.business_name ?? "");
-      addIfChanged("business_email", form.business_email, (original as any).donor?.business_email ?? "");
-      addIfChanged("business_phone", form.business_phone, (original as any).donor?.business_phone ?? "");
-      addIfChanged("address", form.address, (original as any).donor?.address ?? "");
-      addIfChanged("lat", form.lat ?? null, (original as any).donor?.lat ?? null);
-      addIfChanged("lng", form.lng ?? null, (original as any).donor?.lng ?? null);
+      addIfChanged(
+        "business_name",
+        form.business_name,
+        (original as any).donor?.business_name ?? ""
+      );
+      addIfChanged(
+        "business_email",
+        form.business_email,
+        (original as any).donor?.business_email ?? ""
+      );
+      addIfChanged(
+        "business_phone",
+        form.business_phone,
+        (original as any).donor?.business_phone ?? ""
+      );
+      addIfChanged(
+        "address",
+        form.address,
+        (original as any).donor?.address ?? ""
+      );
+      addIfChanged(
+        "lat",
+        form.lat ?? null,
+        (original as any).donor?.lat ?? null
+      );
+      addIfChanged(
+        "lng",
+        form.lng ?? null,
+        (original as any).donor?.lng ?? null
+      );
     }
 
     if ((original as any).type === "receiver") {
@@ -176,7 +208,11 @@ export default function ProfilePage() {
       }
       if (form.charity && (original as any).charity_owner && form.charity_id) {
         payload["charity_id"] = form.charity_id;
-        addIfChanged("charity_name", form.charity.charity_name, (original as any).receiver?.charity?.charity_name ?? "");
+        addIfChanged(
+          "charity_name",
+          form.charity.charity_name,
+          (original as any).receiver?.charity?.charity_name ?? ""
+        );
         addIfChanged(
           "charity_contact_phone",
           form.charity.contact_phone,
@@ -187,7 +223,11 @@ export default function ProfilePage() {
           form.charity.contact_email,
           (original as any).receiver?.charity?.contact_email ?? ""
         );
-        addIfChanged("charity_address", form.charity.address, (original as any).receiver?.charity?.address ?? "");
+        addIfChanged(
+          "charity_address",
+          form.charity.address,
+          (original as any).receiver?.charity?.address ?? ""
+        );
       }
     }
 
@@ -198,12 +238,16 @@ export default function ProfilePage() {
   // Map → address (reverse geocode always)
   const onPick = async (pos: { lat: number; lng: number } | null) => {
     if ((original as any)?.type !== "donor") return;
-    setForm((f: any) => ({ ...f, lat: pos?.lat ?? null, lng: pos?.lng ?? null }));
+    setForm((f: any) => ({
+      ...f,
+      lat: pos?.lat ?? null,
+      lng: pos?.lng ?? null,
+    }));
     if (!pos) return;
     try {
       const disp = await reverseGeocode(pos.lat, pos.lng);
       if (disp) setForm((f: any) => ({ ...f, address: disp }));
-    } catch { /* ignore */ }
+    } catch {}
   };
 
   const Field = ({
@@ -220,9 +264,15 @@ export default function ProfilePage() {
     <label className="grid gap-1">
       <span className="label">{label}</span>
       {editMode && !readOnly && onChange ? (
-        <input className="input" value={value} onChange={(e) => onChange(e.target.value)} />
+        <input
+          className="input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
       ) : (
-        <div className="input bg-muted/40 cursor-default select-text">{value || "—"}</div>
+        <div className="input bg-muted/40 cursor-default select-text">
+          {value || "—"}
+        </div>
       )}
     </label>
   );
@@ -269,7 +319,9 @@ export default function ProfilePage() {
             <div className="card grid gap-4 p-6">
               {isLoading && <p className="text-subtext">Loading...</p>}
               {!isLoading && notRegistered && (
-                <p className="text-subtext">No profile data found. Please register first.</p>
+                <p className="text-subtext">
+                  No profile data found. Please register first.
+                </p>
               )}
               {!isLoading && !notRegistered && form && (
                 <div className="grid gap-4">
@@ -285,10 +337,20 @@ export default function ProfilePage() {
                       onChange={(v) => setForm({ ...form, last_name: v })}
                     />
                   </div>
-                  <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+                  <Field
+                    label="Phone"
+                    value={form.phone}
+                    onChange={(v) => setForm({ ...form, phone: v })}
+                  />
                   <Field
                     label="Account type"
-                    value={(original as any)?.type === "donor" ? "Donor" : (original as any)?.type === "receiver" ? "Receiver" : "—"}
+                    value={
+                      (original as any)?.type === "donor"
+                        ? "Donor"
+                        : (original as any)?.type === "receiver"
+                          ? "Receiver"
+                          : "—"
+                    }
                     readOnly
                   />
 
@@ -296,35 +358,100 @@ export default function ProfilePage() {
                     <div className="grid gap-3">
                       <h4 className="font-medium">Business</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Field label="Business name" value={form.business_name} onChange={(v) => setForm({ ...form, business_name: v })} />
-                        <Field label="Business email" value={form.business_email} onChange={(v) => setForm({ ...form, business_email: v })} />
+                        <Field
+                          label="Business name"
+                          value={form.business_name}
+                          onChange={(v) =>
+                            setForm({ ...form, business_name: v })
+                          }
+                        />
+                        <Field
+                          label="Business email"
+                          value={form.business_email}
+                          onChange={(v) =>
+                            setForm({ ...form, business_email: v })
+                          }
+                        />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Field label="Business phone" value={form.business_phone} onChange={(v) => setForm({ ...form, business_phone: v })} />
+                        <Field
+                          label="Business phone"
+                          value={form.business_phone}
+                          onChange={(v) =>
+                            setForm({ ...form, business_phone: v })
+                          }
+                        />
                         {editMode ? (
                           <AddressSearch
                             label="Business address"
                             value={form.address || ""}
-                            onChangeText={(v) => setForm({ ...form, address: v })}
-                            onSelectPlace={(c) => setForm((f: any) => ({ ...f, address: c.label, lat: c.lat, lng: c.lng }))}
+                            onChangeText={(v) =>
+                              setForm((f: any) => ({
+                                ...f,
+                                address: v,
+                                // optional: keep previous pin until a new place is actually selected
+                                // If you prefer clearing the pin on free typing, set lat/lng to null here.
+                              }))
+                            }
+                            onSelectPlace={(c) => {
+                              // Normalize and validate
+                              const toNum = (x: unknown) => {
+                                const n =
+                                  typeof x === "number"
+                                    ? x
+                                    : parseFloat(
+                                        String(x).replace(",", ".").trim()
+                                      );
+                                return Number.isFinite(n) ? n : null;
+                              };
+                              const lat = toNum((c as any).lat);
+                              const lng = toNum((c as any).lng);
+
+                              if (lat === null || lng === null) {
+                                // refuse to update with bad coords
+                                setForm((f: any) => ({
+                                  ...f,
+                                  address: c.label,
+                                }));
+                                return;
+                              }
+                              setForm((f: any) => ({
+                                ...f,
+                                address: c.label,
+                                lat,
+                                lng,
+                              }));
+                            }}
                           />
                         ) : (
-                          <Field label="Business address" value={form.address} readOnly />
+                          <Field
+                            label="Business address"
+                            value={form.address}
+                            readOnly
+                          />
                         )}
                       </div>
 
                       {editMode && (
                         <div className="grid gap-1">
                           <div className="label">Business location</div>
-                          <div className="text-xs text-subtext mb-2">Search or click the map—both stay in sync.</div>
+                          <div className="text-xs text-subtext mb-2">
+                            Search or click the map—both stay in sync.
+                          </div>
+
                           <MapViewOpenLayers
                             value={
-                              Number.isFinite(form?.lat) && Number.isFinite(form?.lng)
-                                ? { lat: Number(form.lat), lng: Number(form.lng) }
+                              Number.isFinite(Number(form?.lat)) &&
+                              Number.isFinite(Number(form?.lng))
+                                ? {
+                                    lat: Number(form.lat),
+                                    lng: Number(form.lng),
+                                  }
                                 : undefined
                             }
                             onChange={onPick}
                             height={260}
+                            legendMode="pickerOnly"
                           />
                         </div>
                       )}
@@ -332,17 +459,33 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 gap-3">
                         <Field
                           label="Latitude"
-                          value={form.lat === null || form.lat === undefined ? "" : String(form.lat)}
-                          onChange={(v) => setForm({ ...form, lat: v ? Number(v) : null })}
+                          value={
+                            form.lat === null || form.lat === undefined
+                              ? ""
+                              : String(form.lat)
+                          }
+                          onChange={(v) =>
+                            setForm({ ...form, lat: v ? Number(v) : null })
+                          }
                         />
                         <Field
                           label="Longitude"
-                          value={form.lng === null || form.lng === undefined ? "" : String(form.lng)}
-                          onChange={(v) => setForm({ ...form, lng: v ? Number(v) : null })}
+                          value={
+                            form.lng === null || form.lng === undefined
+                              ? ""
+                              : String(form.lng)
+                          }
+                          onChange={(v) =>
+                            setForm({ ...form, lng: v ? Number(v) : null })
+                          }
                         />
                       </div>
 
-                      <Field label="Verified" value={form.verified ? "Yes" : "No"} readOnly />
+                      <Field
+                        label="Verified"
+                        value={form.verified ? "Yes" : "No"}
+                        readOnly
+                      />
                     </div>
                   )}
 
@@ -353,7 +496,9 @@ export default function ProfilePage() {
                         <Field
                           label="Food allergies"
                           value={form.food_allergy}
-                          onChange={(v) => setForm({ ...form, food_allergy: v })}
+                          onChange={(v) =>
+                            setForm({ ...form, food_allergy: v })
+                          }
                         />
                       )}
                       {form.charity && (
@@ -362,34 +507,58 @@ export default function ProfilePage() {
                             label="Charity name"
                             value={form.charity.charity_name}
                             onChange={(v) =>
-                              setForm({ ...form, charity: { ...form.charity, charity_name: v } })
+                              setForm({
+                                ...form,
+                                charity: { ...form.charity, charity_name: v },
+                              })
                             }
-                            readOnly={!editMode || !(original as any)?.charity_owner}
+                            readOnly={
+                              !editMode || !(original as any)?.charity_owner
+                            }
                           />
-                          <Field label="Verified" value={form.charity.verified ? "Yes" : "No"} readOnly />
+                          <Field
+                            label="Verified"
+                            value={form.charity.verified ? "Yes" : "No"}
+                            readOnly
+                          />
                           <Field
                             label="Contact phone"
                             value={form.charity.contact_phone}
                             onChange={(v) =>
-                              setForm({ ...form, charity: { ...form.charity, contact_phone: v } })
+                              setForm({
+                                ...form,
+                                charity: { ...form.charity, contact_phone: v },
+                              })
                             }
-                            readOnly={!editMode || !(original as any)?.charity_owner}
+                            readOnly={
+                              !editMode || !(original as any)?.charity_owner
+                            }
                           />
                           <Field
                             label="Contact email"
                             value={form.charity.contact_email}
                             onChange={(v) =>
-                              setForm({ ...form, charity: { ...form.charity, contact_email: v } })
+                              setForm({
+                                ...form,
+                                charity: { ...form.charity, contact_email: v },
+                              })
                             }
-                            readOnly={!editMode || !(original as any)?.charity_owner}
+                            readOnly={
+                              !editMode || !(original as any)?.charity_owner
+                            }
                           />
                           <Field
                             label="Address"
                             value={form.charity.address}
                             onChange={(v) =>
-                              setForm({ ...form, charity: { ...form.charity, address: v } })
+                              setForm({
+                                ...form,
+                                charity: { ...form.charity, address: v },
+                              })
                             }
-                            readOnly={!editMode || !(original as any)?.charity_owner}
+                            readOnly={
+                              !editMode || !(original as any)?.charity_owner
+                            }
                           />
                         </div>
                       )}
@@ -404,7 +573,11 @@ export default function ProfilePage() {
                 <button type="button" className="btn-primary" onClick={onSave}>
                   Save
                 </button>
-                <button type="button" className="btn-secondary" onClick={onCancel}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={onCancel}
+                >
                   Cancel
                 </button>
               </div>

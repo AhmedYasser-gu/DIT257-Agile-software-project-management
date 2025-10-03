@@ -38,10 +38,10 @@ export type MapPoint = {
   id: string;
   lat: number;
   lng: number;
-  title?: string;          // single-donation title (legacy shape)
+  title?: string; // single-donation title (legacy shape)
   donorName?: string;
-  items?: string[];        // single-donation items (legacy shape)
-  status?: string;         // single-donation status (legacy shape)
+  items?: string[]; // single-donation items (legacy shape)
+  status?: string; // single-donation status (legacy shape)
   detailUrl?: string;
   donations?: GroupDonation[];
 };
@@ -169,7 +169,9 @@ export default function MapViewOpenLayers({
     // hover label
     map.on("pointermove", (evt) => {
       if (!overlayElRef.current) return;
-      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f) as Feature | undefined;
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f) as
+        | Feature
+        | undefined;
       if (!feature) {
         overlayElRef.current.style.display = "none";
         return;
@@ -270,7 +272,13 @@ export default function MapViewOpenLayers({
 
       if (incoming && incoming.length) {
         // push all provided donations
-        incoming.forEach((d) => g!.donations.push({ title: d.title, items: d.items, status: d.status }));
+        incoming.forEach((d) =>
+          g!.donations.push({
+            title: d.title,
+            items: d.items,
+            status: d.status,
+          })
+        );
       } else {
         // legacy: one point == one donation
         g.donations.push({ title: p.title, items: p.items, status: p.status });
@@ -293,7 +301,9 @@ export default function MapViewOpenLayers({
         return `<li class="leading-tight">• ${name}${st}</li>`;
       });
       const extra =
-        g.donations.length > 6 ? `<div class="text-subtext mt-1">+${g.donations.length - 6} more…</div>` : "";
+        g.donations.length > 6
+          ? `<div class="text-subtext mt-1">+${g.donations.length - 6} more…</div>`
+          : "";
 
       const html = `
         <div class="font-medium">${escapeHTML(g.donorName || "Donor")}</div>
@@ -316,20 +326,37 @@ export default function MapViewOpenLayers({
       haveExtent = true;
     }
     if (userFeatRef.current) {
-      extendExtent(ext, (userFeatRef.current.getGeometry() as Point).getExtent());
+      extendExtent(
+        ext,
+        (userFeatRef.current.getGeometry() as Point).getExtent()
+      );
       haveExtent = true;
     }
     if (pickerFeatRef.current) {
-      extendExtent(ext, (pickerFeatRef.current.getGeometry() as Point).getExtent());
+      extendExtent(
+        ext,
+        (pickerFeatRef.current.getGeometry() as Point).getExtent()
+      );
       haveExtent = true;
-    } else if (value && Number.isFinite(value.lat) && Number.isFinite(value.lng)) {
-      extendExtent(ext, new Point(fromLonLat([value.lng, value.lat])).getExtent());
+    } else if (
+      value &&
+      Number.isFinite(value.lat) &&
+      Number.isFinite(value.lng)
+    ) {
+      extendExtent(
+        ext,
+        new Point(fromLonLat([value.lng, value.lat])).getExtent()
+      );
       haveExtent = true;
     }
 
     if (haveExtent) {
       try {
-        view.fit(ext, { padding: [40, 40, 40, 40], maxZoom: 15, duration: 250 });
+        view.fit(ext, {
+          padding: [40, 40, 40, 40],
+          maxZoom: 15,
+          duration: 250,
+        });
       } catch {}
     } else {
       // fallback default only if nothing else to show
@@ -338,7 +365,13 @@ export default function MapViewOpenLayers({
         view.setZoom(3);
       }
     }
-  }, [JSON.stringify(points ?? []), userLocation?.lat, userLocation?.lng, value?.lat, value?.lng]);
+  }, [
+    JSON.stringify(points ?? []),
+    userLocation?.lat,
+    userLocation?.lng,
+    value?.lat,
+    value?.lng,
+  ]);
 
   // reflect picker value from props
   useEffect(() => {
@@ -348,11 +381,12 @@ export default function MapViewOpenLayers({
   }, [value?.lat, value?.lng]);
 
   function setPicker(lat: number, lng: number, opts?: { recenter?: boolean }) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return; // <- guard
     const srcPicker = srcPickerRef.current;
     const map = mapRef.current;
     if (!srcPicker) return;
 
-    const coord = fromLonLat([lng, lat]);
+    const coord = fromLonLat([lng, lat]); // OL wants [lon, lat]
     if (!pickerFeatRef.current) {
       pickerFeatRef.current = new Feature({ geometry: new Point(coord) });
       pickerFeatRef.current.setStyle(markerStyle("#4CAF50"));
@@ -387,7 +421,11 @@ export default function MapViewOpenLayers({
           <div>
             <div className="font-medium">Map</div>
             <div className="text-xs text-subtext">
-              {hasPins ? "Donations by location" : onChange ? "Pick a location" : "Your location"}
+              {hasPins
+                ? "Donations by location"
+                : onChange
+                  ? "Pick a location"
+                  : "Your location"}
             </div>
           </div>
           <div className="text-xs text-subtext">
@@ -402,22 +440,34 @@ export default function MapViewOpenLayers({
             <div className="font-medium mb-1">Legend</div>
             {legendPickerOnly ? (
               <div className="flex items-center gap-2">
-                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#4CAF50" }} />
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full"
+                  style={{ background: "#4CAF50" }}
+                />
                 Selected
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#EB6A25" }} />
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full"
+                    style={{ background: "#EB6A25" }}
+                  />
                   You
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#3B82F6" }} />
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full"
+                    style={{ background: "#3B82F6" }}
+                  />
                   Donor
                 </div>
                 {onChange && (
                   <div className="flex items-center gap-2">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#4CAF50" }} />
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full"
+                      style={{ background: "#4CAF50" }}
+                    />
                     Selected
                   </div>
                 )}
@@ -433,6 +483,9 @@ export default function MapViewOpenLayers({
 function escapeHTML(s: string) {
   return s.replace(
     /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ]!
   );
 }
