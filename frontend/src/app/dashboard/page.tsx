@@ -330,30 +330,72 @@ export default function Dashboard() {
     for (let i = 0; i < n; i++) arr[i % 7]++;
     return arr;
   };
+  // ---------- donor stats (last 7 vs previous 7 days; based on _creationTime) ----------
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  function startOfDay(ts: number) {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  // Build an array of last 14 days (each midnight timestamp)
+  const days: number[] = [];
+  for (let i = 13; i >= 0; i--) {
+    days.push(startOfDay(now - i * dayMs));
+  }
+  function bucketCounts(
+    donations: DonationRow[],
+    filterFn: (d: DonationRow) => boolean,
+    valueFn: (d: DonationRow) => number = () => 1,
+    timeFn: (d: DonationRow) => number | undefined = (d) => d._creationTime
+  ): number[] {
+    const counts = Array(days.length).fill(0);
+
+    donations.forEach((d) => {
+      if (!filterFn(d)) return;
+      const ts = timeFn(d);
+      if (!ts) return;
+
+      const dayIdx = days.findIndex(
+        (dayStart, i) =>
+          ts >= dayStart &&
+          (i === days.length - 1 ? ts < now : ts < days[i + 1])
+      );
+      if (dayIdx >= 0) {
+        counts[dayIdx] += valueFn(d);
+      }
+    });
+
+    return counts;
+  }
+  const createdDaily = bucketCounts(
+    donations, () => true,
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+  const claimedDaily = bucketCounts(donations, (d) => d.status === "CLAIMED");
+  const expiredDaily = bucketCounts(
+    donations,
+    (d) => d.status === "EXPIRED" && !!d.pickup_window_end,
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+  const quantityDaily = bucketCounts(donations, () => true, (d) => toNum(d.quantity));
+
+  // Slice last 7 vs previous 7
+  function sliceStats(series: number[]) {
+    const prev = series.slice(0, 7).reduce((a, b) => a + b, 0);
+    const curr = series.slice(7).reduce((a, b) => a + b, 0);
+    return { current: curr, previous: prev, daily: series.slice(7) };
+  }
 
   const statsSeries = {
-    created: {
-      current: createdCurr,
-      previous: createdPrev,
-      daily: spreadSeries(createdCurr),
-    },
-    claimed: {
-      current: claimedCurr,
-      previous: claimedPrev,
-      daily: spreadSeries(claimedCurr),
-    },
-    expired: {
-      current: expiredCurr,
-      previous: expiredPrev,
-      daily: spreadSeries(expiredCurr),
-    },
-    quantity: {
-      current: qtyCurr,
-      previous: qtyPrev,
-      daily: spreadSeries(qtyCurr),
-    },
+    created: sliceStats(createdDaily),
+    claimed: sliceStats(claimedDaily),
+    expired: sliceStats(expiredDaily),
+    quantity: sliceStats(quantityDaily),
   };
-
   // donor accordions
   const [showOpen, setShowOpen] = useState(true);
   const [showClaimed, setShowClaimed] = useState(false);
