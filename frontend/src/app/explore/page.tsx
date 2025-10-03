@@ -22,6 +22,7 @@ type AvailableDonation = {
   pickup_window_start?: string;
   pickup_window_end?: string;
   status: "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
+  imageUrl?: string | null;
   donor?: {
     _id: string;
     business_name: string;
@@ -184,40 +185,44 @@ export default function Explore() {
                 {list.map((d) => {
                   const mins = minutesRemaining(d.pickup_window_end);
                   return (
-                  <li key={d._id} className="card donation-card flex items-start justify-between gap-4">
-                    <div className="grid gap-1 overflow-hidden">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
-                        <CategoryPill label={d.category} />
-                        <StatusBadge status={d.status} />
-                      </div>
-                      <div className="text-sm text-subtext line-clamp-2 break-anywhere">
-                        Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
-                      </div>
-                      <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                        Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
-                        {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
-                      </div>
-                      {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
-
-                      {/* Reviews go here inside the same container */}
-                      {d.donor?._id && donorReviews && (
-                        <div className="text-sm line-clamp-2">
-                          {(() => {
-                            const avg = getAvgRating(d.donor._id);
-                            if (!avg) return "No reviews yet";
-                            const fullStars = Math.floor(avg);
-                            const halfStar = avg - fullStars >= 0.5;
-                            return (
-                              <>
-                                {"⭐".repeat(fullStars)}
-                                {halfStar && "✩"} ({avg.toFixed(1)})
-                              </>
-                            );
-                          })()}
+                    <li key={d._id} className="card donation-card flex items-start justify-between gap-4 overflow-hidden">
+                      {d.imageUrl && (
+                        <div className="shrink-0">
+                          <img src={d.imageUrl} alt={d.title} className="h-24 w-24 object-cover rounded-md" />
                         </div>
                       )}
-                    </div>
+                      <div className="grid gap-1 overflow-hidden">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                          <CategoryPill label={d.category} />
+                          <StatusBadge status={d.status} />
+                        </div>
+                        <div className="text-sm text-subtext line-clamp-2 break-anywhere">
+                          Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
+                        </div>
+                        <div className="text-xs text-subtext line-clamp-2 break-anywhere">
+                          Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
+                          {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
+                        </div>
+                        {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
+
+                        {d.donor?._id && donorReviews && (
+                          <div className="text-sm line-clamp-2">
+                            {(() => {
+                              const avg = getAvgRating(d.donor._id);
+                              if (!avg) return "No reviews yet";
+                              const fullStars = Math.floor(avg);
+                              const halfStar = avg - fullStars >= 0.5;
+                              return (
+                                <>
+                                  {"⭐".repeat(fullStars)}
+                                  {halfStar && "✩"} ({avg.toFixed(1)})
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
 
                     <div className="flex gap-2">
                       <Link className="btn-primary" href="/dashboard">

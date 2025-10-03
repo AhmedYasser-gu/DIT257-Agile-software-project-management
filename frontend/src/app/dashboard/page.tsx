@@ -435,8 +435,13 @@ export default function Dashboard() {
                     {availableFiltered.map((d) => (
                       <li
                         key={d._id}
-                        className="card donation-card flex items-start justify-between gap-4"
+                        className="card donation-card flex items-start justify-between gap-4 overflow-hidden"
                       >
+                        {((d as any).imageUrl) && (
+                          <div className="shrink-0">
+                            <img src={(d as any).imageUrl} alt={d.title} className="h-24 w-24 object-cover rounded-md" />
+                          </div>
+                        )}
                         <div className="grid gap-1 overflow-hidden">
                           <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
                           <div className="text-sm text-subtext line-clamp-2 break-anywhere">
@@ -616,18 +621,25 @@ export default function Dashboard() {
                       key={d._id}
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
-                      <p className="text-sm text-gray-600 line-clamp-1">
-                        Qty: {fmtQty(d.quantity)} · Category: {d.category}
-                      </p>
-                      <p className="text-sm text-gray-500 line-clamp-1">
-                        Pickup: {d.pickup_window_start} → {d.pickup_window_end}
-                      </p>
-                      {d.description && (
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {d.description}
-                        </p>
-                      )}
+                      <div className="flex items-start gap-4">
+                        {((d as any).imageUrl) && (
+                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                          <p className="text-sm text-gray-600 line-clamp-1">
+                            Qty: {fmtQty(d.quantity)} · Category: {d.category}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1">
+                            Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                          </p>
+                          {d.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {d.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {donorLists.OPEN.length === 0 && (
@@ -661,18 +673,25 @@ export default function Dashboard() {
                       key={d._id}
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
-                      <p className="text-sm text-gray-600 line-clamp-1">
-                        Qty: {fmtQty(d.quantity)} · Category: {d.category}
-                      </p>
-                      <p className="text-sm text-gray-500 line-clamp-1">
-                        Pickup: {d.pickup_window_start} → {d.pickup_window_end}
-                      </p>
-                      {d.description && (
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {d.description}
-                        </p>
-                      )}
+                      <div className="flex items-start gap-4">
+                        {((d as any).imageUrl) && (
+                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                          <p className="text-sm text-gray-600 line-clamp-1">
+                            Qty: {fmtQty(d.quantity)} · Category: {d.category}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1">
+                            Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                          </p>
+                          {d.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {d.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {donorLists.CLAIMED.length === 0 && (
@@ -706,18 +725,25 @@ export default function Dashboard() {
                       key={d._id}
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
-                      <p className="text-sm text-gray-600 line-clamp-1">
-                        Qty: {fmtQty(d.quantity)} · Category: {d.category}
-                      </p>
-                      <p className="text-sm text-gray-500 line-clamp-1">
-                        Pickup: {d.pickup_window_start} → {d.pickup_window_end}
-                      </p>
-                      {d.description && (
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {d.description}
-                        </p>
-                      )}
+                      <div className="flex items-start gap-4">
+                        {((d as any).imageUrl) && (
+                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                          <p className="text-sm text-gray-600 line-clamp-1">
+                            Qty: {fmtQty(d.quantity)} · Category: {d.category}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1">
+                            Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                          </p>
+                          {d.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {d.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {donorLists.EXPIRED.length === 0 && (

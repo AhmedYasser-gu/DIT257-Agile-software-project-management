@@ -91,6 +91,7 @@ export default defineSchema({
     pickup_window_end: v.string(),
     status: donationStatusValidator,
     category: v.string(),
+    images: v.optional(v.array(v.id("_storage"))),
   }).index("by_donor", ["donor_id"]),
 
   claims: defineTable({

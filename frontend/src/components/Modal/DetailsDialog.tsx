@@ -12,6 +12,7 @@ type Donation = {
   pickup_window_start?: string;
   pickup_window_end?: string;
   status: string;
+  imageUrl?: string | null;
   donor?: { _id: string; business_name: string; address?: string } | null;
 };
 
@@ -53,6 +54,15 @@ export default function DetailsDialog({ open, donation, onClose }: Props) {
 
           <div className="p-4 max-h-[70vh] overflow-y-auto break-anywhere">
             <div className="grid gap-2">
+              {donation.imageUrl && (
+                <div className="w-full">
+                  <img
+                    src={donation.imageUrl}
+                    alt={donation.title}
+                    className="w-full h-auto max-h-[50vh] object-contain rounded-md"
+                  />
+                </div>
+              )}
               <div className="text-sm break-anywhere"><span className="text-subtext">Quantity:</span> {String(donation.quantity)}</div>
               <div className="text-sm text-subtext break-anywhere">
                 Pickup: {donation.pickup_window_start ?? "-"} → {donation.pickup_window_end ?? "-"}
