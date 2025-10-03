@@ -157,15 +157,26 @@ Open your browser:
 
 We use [**Vitest**](https://vitest.dev) for frontend unit testing.
 
-### Run all tests
-
 ```bash
+cd frontend
 npm run test
 
 - > Run with coverage report to get %
-
 npm run test:coverage
 
+
+```
+
+---
+
+We use [**Vitest**](https://vitest.dev) to test Convex backend queries and mutations.
+
+```bash
+cd backend
+npm run test
+
+- > Run with coverage report to get %
+npm run test:coverage
 ```
 
 ## ✅ Definition of Done
