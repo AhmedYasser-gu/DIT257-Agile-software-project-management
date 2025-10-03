@@ -44,6 +44,24 @@ export default function Explore() {
   const [sort, setSort] = useState<SortKey>("soonest");
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
 
+
+  const donorIds = useMemo(
+    () => Array.from(new Set((data ?? []).map((d) => d.donor?._id).filter(Boolean))),
+    [data]
+  );
+
+  const donorReviews = useQuery(api.functions.reviews.getReviewsForDonors, {
+    donorIds: donorIds as string[],
+  }) as Record<string, { rating: number }[]> | undefined;
+
+
+  const getAvgRating = (donorId: string) => {
+    const reviews = donorReviews?.[donorId] ?? [];
+    if (!reviews.length) return null;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return sum / reviews.length;
+  };
+
   // device location
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -187,13 +205,31 @@ export default function Explore() {
                           {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
                         </div>
                         {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
+
+                        {d.donor?._id && donorReviews && (
+                          <div className="text-sm line-clamp-2">
+                            {(() => {
+                              const avg = getAvgRating(d.donor._id);
+                              if (!avg) return "No reviews yet";
+                              const fullStars = Math.floor(avg);
+                              const halfStar = avg - fullStars >= 0.5;
+                              return (
+                                <>
+                                  {"⭐".repeat(fullStars)}
+                                  {halfStar && "✩"} ({avg.toFixed(1)})
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <Link className="btn-primary" href="/dashboard">
-                          Proceed
-                        </Link>
-                      </div>
-                    </li>
+
+                    <div className="flex gap-2">
+                      <Link className="btn-primary" href="/dashboard">
+                        Proceed
+                      </Link>
+                    </div>
+                  </li>
                   );
                 })}
               </ul>

@@ -24,12 +24,14 @@ export default function NavBar() {
     { href: "/", label: "Home", exact: true },
     { href: "/dashboard", label: "Dashboard" },
     { href: "/donate", label: "Post Donation" },
+    { href: "/reviews", label: "Reviews" },
     { href: "/how-it-works", label: "How it works" },
   ];
   const linksReceiver = [
     { href: "/", label: "Home", exact: true },
     { href: "/explore", label: "Explore" },
     { href: "/dashboard", label: "Dashboard" },
+    { href: "/reviews", label: "Reviews" },
     { href: "/how-it-works", label: "How it works" },
   ];
 
