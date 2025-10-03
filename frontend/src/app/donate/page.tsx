@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import Input from "@/components/Input/Input";
 import Access from "@/components/Access/Access";
 import { api } from "@/convexApi";
 import { PRESET_FOOD_CATEGORIES, FoodCategory } from "@/constants/categories";
 import { useToast } from "@/components/Toast/ToastContext";
 import CategorySelect from "@/components/Input/CategorySelect";
+import { processImageToWebP } from "@/helpers/image";
 
 type DonorOption = { _id: string; business_name: string };
 
@@ -20,6 +21,7 @@ type CreateDonationInput = {
   title: string;
   status: "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED";
   category: string;
+  images?: string[];
 };
 
 function todayISODate(): string {
@@ -60,6 +62,10 @@ export default function Donate() {
   // default that exists in our presets
   const [category, setCategory] = useState<FoodCategory>("Prepared Meals");
 
+  // image upload state
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   // split date/time inputs
@@ -72,6 +78,7 @@ export default function Donate() {
   const pickupEndISO = useMemo(() => combineISO(endDate, endTime), [endDate, endTime]);
 
   const createDonation = useMutation(api.functions.createDonation.createDonation);
+  const getUploadUrl = useAction(api.functions.uploadImage.getUploadUrl);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -102,6 +109,36 @@ export default function Donate() {
     }
     setErrorMessage("");
 
+    // Process and upload images first (optional)
+    let imageIds: string[] = [];
+    if (files.length > 0) {
+      setUploading(true);
+      try {
+        for (const f of files) {
+          const processed = await processImageToWebP(f);
+          // Get signed upload URL
+          const { url } = await getUploadUrl({ contentType: "image/webp" });
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "image/webp" },
+            body: processed.blob,
+          });
+          if (!res.ok) throw new Error("Upload failed");
+          const json = await res.json();
+          const storageId = json.storageId ?? json.id;
+          if (!storageId) throw new Error("No storageId returned");
+          imageIds.push(storageId);
+        }
+      } catch (e) {
+        setUploading(false);
+        const msg = e instanceof Error ? e.message : "Image upload failed";
+        setErrorMessage(msg);
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
+
     const payload: CreateDonationInput = {
       description,
       donor_id,
@@ -111,6 +148,7 @@ export default function Donate() {
       title,
       status: "AVAILABLE",
       category, // still a plain string
+      images: imageIds,
     };
 
     try {
@@ -123,6 +161,7 @@ export default function Donate() {
       setDescription("");
       setQuantity(0);
       setCategory("Prepared Meals");
+      setFiles([]);
       const today = todayISODate();
       const nowHM = nowISOTimeHM();
       setStartDate(today);
@@ -178,6 +217,25 @@ export default function Donate() {
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
+
+          {/* Images */}
+          <div className="grid gap-1">
+            <label className="label">Images (optional)</label>
+            <input
+              className="input"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const list = e.target.files;
+                setFiles(list ? Array.from(list) : []);
+              }}
+            />
+            {files.length > 0 && (
+              <div className="text-xs text-subtext">{files.length} file(s) selected</div>
+            )}
+            {uploading && <div className="text-xs">Uploading images…</div>}
+          </div>
 
           {/* Quantity */}
           <Input
@@ -263,7 +321,9 @@ export default function Donate() {
 
           {errorMessage && <p className="text-red-600">{errorMessage}</p>}
 
-          <button type="submit" className="btn-primary w-fit">Post Donation</button>
+          <button type="submit" className="btn-primary w-fit" disabled={uploading}>
+            {uploading ? "Posting…" : "Post Donation"}
+          </button>
         </form>
       </section>
     </Access>

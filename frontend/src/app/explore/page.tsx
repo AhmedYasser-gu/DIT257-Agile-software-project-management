@@ -22,6 +22,7 @@ type AvailableDonation = {
   pickup_window_start?: string;
   pickup_window_end?: string;
   status: "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
+  imageUrl?: string | null;
   donor?: {
     _id: string;
     business_name: string;
@@ -166,7 +167,12 @@ export default function Explore() {
                 {list.map((d) => {
                   const mins = minutesRemaining(d.pickup_window_end);
                   return (
-                    <li key={d._id} className="card donation-card flex items-start justify-between gap-4">
+                    <li key={d._id} className="card donation-card flex items-start justify-between gap-4 overflow-hidden">
+                      {d.imageUrl && (
+                        <div className="shrink-0">
+                          <img src={d.imageUrl} alt={d.title} className="h-24 w-24 object-cover rounded-md" />
+                        </div>
+                      )}
                       <div className="grid gap-1 overflow-hidden">
                         <div className="flex items-center gap-2 overflow-hidden">
                           <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
