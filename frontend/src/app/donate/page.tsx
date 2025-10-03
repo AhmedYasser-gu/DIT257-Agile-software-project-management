@@ -210,7 +210,7 @@ export default function Donate() {
 
           {/* Description */}
           <label className="grid gap-1">
-            <span className="label">Description</span>
+            <span className="label">Description (also add pickup instructions)</span>
             <textarea
               className="input min-h-[96px]"
               value={description}
