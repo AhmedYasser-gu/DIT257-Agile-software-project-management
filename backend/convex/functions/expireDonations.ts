@@ -54,8 +54,8 @@ export const handleTimedOutClaims = internalMutation(async ({ db }) => {
     }
 
     // Calculate claim expiry times
-    const claimExpiry = Number.isNaN(claimCreated) ? -Infinity : claimCreated + 30 * 60 * 1000;
-    const pickupExpiry = Number.isNaN(pickupStart) ? -Infinity : pickupStart + 30 * 60 * 1000;
+    const claimExpiry = Number.isNaN(claimCreated) ? -Infinity : claimCreated + 60 * 60 * 1000;
+    const pickupExpiry = Number.isNaN(pickupStart) ? -Infinity : pickupStart + 60 * 60 * 1000;
 
     // Use the later of the two
     const effectiveExpiry = Math.max(claimExpiry, pickupExpiry);

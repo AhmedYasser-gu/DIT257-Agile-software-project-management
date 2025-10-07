@@ -62,7 +62,7 @@ export default function Home() {
     if (!claim) return "--:--:--";
     const startTs = getEffectiveStart(claim);
     if (Number.isNaN(startTs)) return "--:--:--";
-    const totalMs = 30 * 60 * 1000; // 30 minutes
+    const totalMs = 60 * 60 * 1000; // 1 hour
     const elapsed = nowTs - startTs;
     const remaining = Math.max(0, totalMs - elapsed);
     return formatHMS(remaining);
@@ -72,7 +72,7 @@ export default function Home() {
     if (!claim) return false;
     const startTs = getEffectiveStart(claim);
     if (Number.isNaN(startTs)) return false;
-    return nowTs - startTs >= 30 * 60 * 1000;
+    return nowTs - startTs >= 60 * 60 * 1000;
   };
 
   const parseDate = (s?: string) => {
@@ -162,7 +162,7 @@ export default function Home() {
                     }
                     return (
                       <div className={`shrink-0 text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}>
-                        {expired ? "Time up" : `Pickup within ${fmtDuration(30 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
+                        {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
                       </div>
                     );
                   })()}
