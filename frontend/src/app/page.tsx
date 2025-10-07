@@ -11,22 +11,26 @@ export default function Home() {
           people nearby.
         </p>
 
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
           <SignedOut>
-            <p className="mt-2 text-subtext">
-              Please login or register to proceed forward !
-            </p>
-            <Link className="btn-primary" href="/login">
-              Login / Register
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <p className="text-subtext">
+                Please login or register to proceed forward !
+              </p>
+              <Link className="btn-primary" href="/login">
+                Login / Register
+              </Link>
+            </div>
           </SignedOut>
           <SignedIn>
-            <Link className="btn-primary" href="/dashboard">
-              Go to dashboard
-            </Link>
-            <Link className="btn-outline" href="/explore">
-              Explore
-            </Link>
+            <div className="flex gap-3">
+              <Link className="btn-primary" href="/dashboard">
+                Go to dashboard
+              </Link>
+              <Link className="btn-outline" href="/explore">
+                Explore
+              </Link>
+            </div>
           </SignedIn>
         </div>
       </div>

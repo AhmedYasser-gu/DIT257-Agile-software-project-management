@@ -450,7 +450,7 @@ export default function Dashboard() {
         {isReceiver && (
           <>
             {/* Tabs */}
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 className={`btn-outline ${active === "available" ? "!bg-[#4CAF50] !text-white border-transparent" : ""}`}
@@ -470,37 +470,37 @@ export default function Dashboard() {
             {/* Available + controls */}
             {active === "available" && (
               <div className="grid gap-3">
-                <div className="flex gap-2 flex-wrap items-end justify-between">
-                  <div className="text-subtext text-sm">
-                    Browse and claim food that’s still good.
-                  </div>
-                  <div className="flex gap-2">
+                <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+                  <div className="text-subtext text-sm">Browse and claim food that’s still good.</div>
+                  <div className="grid gap-2 sm:flex sm:items-center sm:gap-2">
                     <input
-                      className="input"
+                      className="input w-full sm:w-52"
                       placeholder="Search…"
                       value={qRecv}
                       onChange={(e) => setQRecv(e.target.value)}
                     />
-                    <select
-                      className="input"
-                      value={catRecv}
-                      onChange={(e) => setCatRecv(e.target.value)}
-                    >
-                      {catsRecv.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="input"
-                      value={sortRecv}
-                      onChange={(e) => setSortRecv(e.target.value as SortKey)}
-                    >
-                      <option value="soonest">Soonest pickup</option>
-                      <option value="newest">Newest</option>
-                      <option value="title">Title</option>
-                    </select>
+                    <div className="grid gap-2 sm:flex sm:gap-2">
+                      <select
+                        className="input w-full sm:w-40"
+                        value={catRecv}
+                        onChange={(e) => setCatRecv(e.target.value)}
+                      >
+                        {catsRecv.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="input w-full sm:w-40"
+                        value={sortRecv}
+                        onChange={(e) => setSortRecv(e.target.value as SortKey)}
+                      >
+                        <option value="soonest">Soonest pickup</option>
+                        <option value="newest">Newest</option>
+                        <option value="title">Title</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -517,28 +517,31 @@ export default function Dashboard() {
                     {availableFiltered.map((d) => (
                       <li
                         key={d._id}
-                        className="card donation-card flex items-start justify-between gap-4 overflow-hidden"
+                        className="card donation-card flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
                       >
-                        {((d as any).imageUrl) && (
-                          <div className="shrink-0">
-                            <img src={(d as any).imageUrl} alt={d.title} className="h-24 w-24 object-cover rounded-md" />
-                          </div>
-                        )}
-                        <div className="grid gap-1 overflow-hidden">
-                          <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
-                          <div className="text-sm text-subtext line-clamp-2 break-anywhere">
-                            {d.category} · Qty: {fmtQty(d.quantity)} ·{" "}
-                            {d.donor?.business_name ?? "Unknown donor"}
-                          </div>
-                          <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                            Pickup: {d.pickup_window_start} →{" "}
-                            {d.pickup_window_end}
-                          </div>
-                          {d.description && (
-                            <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:flex-1">
+                          {((d as any).imageUrl) && (
+                            <img
+                              src={(d as any).imageUrl}
+                              alt={d.title}
+                              className="h-32 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                            />
                           )}
+                          <div className="grid gap-1 overflow-hidden">
+                            <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                            <div className="text-sm text-subtext line-clamp-2 break-anywhere">
+                              {d.category} · Qty: {fmtQty(d.quantity)} ·{" "}
+                              {d.donor?.business_name ?? "Unknown donor"}
+                            </div>
+                            <div className="text-xs text-subtext line-clamp-2 break-anywhere">
+                              Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                            </div>
+                            {d.description && (
+                              <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
                           <button
                             className="btn-primary btn-action"
                             onClick={() => setPendingId(d._id)}
@@ -565,15 +568,15 @@ export default function Dashboard() {
             {/* My claims + controls */}
             {active === "myClaims" && (
               <div className="grid gap-3">
-                <div className="flex gap-2 flex-wrap items-end justify-end">
+                <div className="grid gap-2 sm:flex sm:justify-end sm:gap-2">
                   <input
-                    className="input"
+                    className="input w-full sm:w-56"
                     placeholder="Search my claims…"
                     value={qClaims}
                     onChange={(e) => setQClaims(e.target.value)}
                   />
                   <select
-                    className="input"
+                    className="input w-full sm:w-40"
                     value={sortClaims}
                     onChange={(e) =>
                       setSortClaims(e.target.value as ClaimsSortKey)
@@ -593,13 +596,13 @@ export default function Dashboard() {
                 {myClaims && myClaimsFiltered.length > 0 && (
                   <ul className="grid gap-3">
                     {myClaimsFiltered.map((c) => (
-                      <li key={c._id} className="card grid gap-1">
-                        <div className="flex items-center justify-between">
+                      <li key={c._id} className="card grid gap-2">
+                        <div className="grid gap-2 sm:flex sm:items-start sm:justify-between">
                           <div className="font-medium">
                             {c.donation?.title ?? "Donation"} —{" "}
                             {c.donor?.business_name ?? "Unknown donor"}
                           </div>
-                          <div className="text-sm">
+                          <div className="text-sm sm:text-right">
                             Claim status:{" "}
                             <span className="text-subtext">
                               {claimLabel(c)}
@@ -644,22 +647,22 @@ export default function Dashboard() {
         {isDonor && (
           <div className="max-w-5xl px-0 py-2 space-y-12">
             {/* Donor search/filter/sort controls */}
-            <div className="flex items-end justify-between gap-3 flex-wrap">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-[200px] sm:flex-1">
                 <h3 className="text-xl font-semibold">My posts</h3>
                 <p className="text-subtext text-sm">
                   Filter by category or search by title/description.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-none sm:gap-2">
                 <input
-                  className="input"
+                  className="input w-full sm:max-w-xs"
                   placeholder="Search my posts…"
                   value={qDonor}
                   onChange={(e) => setQDonor(e.target.value)}
                 />
                 <select
-                  className="input"
+                  className="input w-full sm:w-auto"
                   value={catDonor}
                   onChange={(e) => setCatDonor(e.target.value)}
                 >
@@ -670,7 +673,7 @@ export default function Dashboard() {
                   ))}
                 </select>
                 <select
-                  className="input"
+                  className="input w-full sm:w-auto"
                   value={sortDonor}
                   onChange={(e) => setSortDonor(e.target.value as DonorSortKey)}
                 >
@@ -703,11 +706,15 @@ export default function Dashboard() {
                       key={d._id}
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {((d as any).imageUrl) && (
-                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                          <img
+                            src={(d as any).imageUrl}
+                            alt={d.title}
+                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                          />
                         )}
-                        <div className="min-w-0">
+                        <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
                           <p className="text-sm text-gray-600 line-clamp-1">
                             Qty: {fmtQty(d.quantity)} · Category: {d.category}
@@ -755,11 +762,15 @@ export default function Dashboard() {
                       key={d._id}
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {((d as any).imageUrl) && (
-                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                          <img
+                            src={(d as any).imageUrl}
+                            alt={d.title}
+                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                          />
                         )}
-                        <div className="min-w-0">
+                        <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
                           <p className="text-sm text-gray-600 line-clamp-1">
                             Qty: {fmtQty(d.quantity)} · Category: {d.category}
@@ -807,11 +818,15 @@ export default function Dashboard() {
                       key={d._id}
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {((d as any).imageUrl) && (
-                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                          <img
+                            src={(d as any).imageUrl}
+                            alt={d.title}
+                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                          />
                         )}
-                        <div className="min-w-0">
+                        <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
                           <p className="text-sm text-gray-600 line-clamp-1">
                             Qty: {fmtQty(d.quantity)} · Category: {d.category}

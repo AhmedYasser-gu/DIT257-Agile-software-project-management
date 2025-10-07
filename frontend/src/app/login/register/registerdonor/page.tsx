@@ -146,7 +146,7 @@ export default function RegisterDonater() {
 
   return (
     <Access requireAuth requireUnregistered redirectIfRegisteredTo="/dashboard">
-      <section className="grid gap-4 max-w-md">
+      <section className="grid gap-4 max-w-3xl w-full">
         <h2 className="text-2xl font-semibold">Register as Donor</h2>
 
         <div className="card grid gap-4 p-6">
@@ -155,7 +155,7 @@ export default function RegisterDonater() {
           </p>
 
           <form className="grid gap-3" onSubmit={onSubmit}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="label">First name</span>
                 <input
@@ -218,7 +218,7 @@ export default function RegisterDonater() {
                   />
                 </label>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="grid gap-1">
                     <span className="label">Business email</span>
                     <input
@@ -256,19 +256,21 @@ export default function RegisterDonater() {
                   <div className="text-xs text-subtext mb-2">
                     Search or click the map—both stay in sync.
                   </div>
-                  <MapViewOpenLayers
-                    value={coords ?? undefined}
-                    onChange={onPick}
-                    height={260}
-                    legendMode="pickerOnly"
-                  />
+                  <div className="h-60 w-full overflow-hidden rounded-md">
+                    <MapViewOpenLayers
+                      value={coords ?? undefined}
+                      onChange={onPick}
+                      height={240}
+                      legendMode="pickerOnly"
+                    />
+                  </div>
                 </div>
               </>
             )}
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 type="submit"
                 className="btn-primary"

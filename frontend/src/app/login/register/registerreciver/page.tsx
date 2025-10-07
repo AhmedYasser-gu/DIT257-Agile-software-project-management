@@ -125,16 +125,28 @@ export default function RegisterReciver() {
 
   return (
     <Access requireAuth requireUnregistered redirectIfRegisteredTo="/dashboard">
-      <section className="grid gap-4 max-w-md">
+      <section className="grid gap-4 max-w-3xl w-full">
         <h2 className="text-2xl font-semibold">Register as Receiver</h2>
         <div className="card grid gap-4 p-6">
-          <div className="flex gap-2">
-            <button type="button" className={`btn-outline ${activeTab === "individual" ? "!bg-primary !text-white border-transparent" : ""}`} onClick={() => setActiveTab("individual")}>Individual</button>
-            <button type="button" className={`btn-outline ${activeTab === "charity" ? "!bg-primary !text-white border-transparent" : ""}`} onClick={() => setActiveTab("charity")}>Charity user</button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <button
+              type="button"
+              className={`btn-outline w-full sm:w-auto ${activeTab === "individual" ? "!bg-primary !text-white border-transparent" : ""}`}
+              onClick={() => setActiveTab("individual")}
+            >
+              Individual
+            </button>
+            <button
+              type="button"
+              className={`btn-outline w-full sm:w-auto ${activeTab === "charity" ? "!bg-primary !text-white border-transparent" : ""}`}
+              onClick={() => setActiveTab("charity")}
+            >
+              Charity user
+            </button>
           </div>
           <p className="text-subtext">Create an account to start claiming food.</p>
           <form className="grid gap-3" onSubmit={onSubmit}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="label">First name</span>
                 <input className="input" value={firstName} onChange={e=>setFirstName(e.target.value)} />
@@ -175,7 +187,7 @@ export default function RegisterReciver() {
                       <span className="label">Charity name</span>
                       <input className="input" value={charityName} onChange={e=>setCharityName(e.target.value)} />
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label className="grid gap-1">
                         <span className="label">Email</span>
                         <input type="email" className="input" value={charityEmail} onChange={e=>setCharityEmail(e.target.value)} />
@@ -194,9 +206,21 @@ export default function RegisterReciver() {
               </>
             )}
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button type="submit" className="btn-primary" disabled={!isLoaded || !userId || !allValid || submitting}>
-              {submitting ? "Registering..." : "Register"}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button type="submit" className="btn-primary" disabled={!isLoaded || !userId || !allValid || submitting}>
+                {submitting ? "Registering..." : "Register"}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  if (window.history.length > 1) router.back();
+                  else router.push("/login/register");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       </section>
