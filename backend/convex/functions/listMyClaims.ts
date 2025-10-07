@@ -49,6 +49,7 @@ export const listMyClaims = query({
 
         return {
           _id: c._id,
+          _creationTime: (c as any)._creationTime,
           status: c.status,
           amount: c.amount,
           donation: donation && {

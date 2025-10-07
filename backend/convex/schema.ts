@@ -17,10 +17,12 @@ const donationStatusValidator = v.union(
 enum ClaimedStatus {
   Pending = "PENDING",
   PickedUp = "PICKEDUP",
+  TimesUp = "TIMESUP",
 }
 const claimedStatusValidator = v.union(
   v.literal(ClaimedStatus.Pending),
-  v.literal(ClaimedStatus.PickedUp)
+  v.literal(ClaimedStatus.PickedUp),
+  v.literal(ClaimedStatus.TimesUp)
 );
 
 enum UserType {

@@ -9,4 +9,11 @@ crons.daily(
   (internal as any).functions.expireDonations.expireOldDonations
 );
 
+// Run every 5 minutes to reopen timed-out claims
+crons.interval(
+  "Reopen donations after claim time-up",
+  { minutes: 1 },
+  (internal as any).functions.expireDonations.handleTimedOutClaims
+);
+
 export default crons;
