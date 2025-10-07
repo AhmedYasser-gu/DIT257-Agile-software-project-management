@@ -66,8 +66,17 @@ const parseEnd = (s?: string) =>
     ? new Date(s.includes("T") ? s : s.replace(" ", "T")).getTime() || Infinity
     : Infinity;
 
-const makeChartData = (arr: number[]) =>
-  arr.map((val, idx) => ({ day: `D${idx + 1}`, value: val }));
+const makeChartData = (arr: number[], startTs: number) => {
+  const dayMs = 24 * 60 * 60 * 1000;
+  return arr.map((val, idx) => {
+    const date = new Date(startTs + idx * dayMs);
+    const label = date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    return { day: label, value: val };
+  });
+};
 function calcChange(current: number, previous: number) {
   if (previous === 0) return { percent: 100, trend: "up" as const };
   const diff = current - previous;
@@ -120,6 +129,8 @@ function StatCard({
             <XAxis dataKey="day" hide />
             <YAxis hide />
             <Tooltip
+              formatter={(value: number) => [`${value}`, "Value"]}
+              labelFormatter={(label: string) => `Date: ${label}`}
               cursor={{ stroke: "#ccc", strokeDasharray: "5 5" }}
               contentStyle={{ fontSize: "12px" }}
             />
@@ -285,11 +296,15 @@ export default function Dashboard() {
     return { OPEN, CLAIMED, EXPIRED };
   }, [myDonations, qDonor, catDonor, sortDonor]);
 
-  // donor stats (last 7 vs previous 7 days; based on _creationTime)
+
+  // Donor stats period (7, 14, or 30 days)
+  const [statsDays, setStatsDays] = useState(7);
+
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
-  const startCurr = now - 7 * day;
-  const startPrev = now - 14 * day;
+  const startCurr = now - statsDays * day;
+  const startPrev = now - 2 * statsDays * day;
+
   const donations = myDonations ?? [];
 
   const inRange = (t: number | undefined, s: number, e: number) =>
@@ -330,30 +345,97 @@ export default function Dashboard() {
     for (let i = 0; i < n; i++) arr[i % 7]++;
     return arr;
   };
+  // ---------- donor stats (last 7 vs previous 7 days; based on _creationTime) ----------
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  function startOfDay(ts: number) {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  // Build an array of last 2 × statsDays (each midnight timestamp)
+  const days: number[] = [];
+  for (let i = 2 * statsDays - 1; i >= 0; i--) {
+    days.push(startOfDay(now - i * dayMs));
+  }
+  function bucketCounts(
+    donations: DonationRow[],
+    filterFn: (d: DonationRow) => boolean,
+    valueFn: (d: DonationRow) => number,
+    timeFn: (d: DonationRow) => number | undefined = (d) => d._creationTime
+  ): number[] {
+    const counts = Array(days.length).fill(0);
+
+    donations.forEach((d) => {
+      if (!filterFn(d)) return;
+      const ts = timeFn(d);
+      if (!ts) return;
+
+      const dayIdx = days.findIndex(
+        (dayStart, i) =>
+          ts >= dayStart &&
+          (i === days.length - 1 ? ts < now : ts < days[i + 1])
+      );
+      if (dayIdx >= 0) {
+        counts[dayIdx] += valueFn(d);
+      }
+    });
+
+    return counts;
+  }
+  const createdDaily = bucketCounts(
+    donations,
+    () => true,
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+  const claimedDaily = bucketCounts(
+    donations,
+    (d) => d.status === "AVAILABLE",
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+  const expiredDaily = bucketCounts(
+    donations,
+    (d) => d.status === "EXPIRED" && !!d.pickup_window_end,
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+
+  const quantityCreatedDaily = bucketCounts(
+    donations,
+    () => true,
+    (d) => toNum(d.quantity),
+    (d) => new Date(d.pickup_window_end!).getTime(),
+  );
+  const quantityClaimedDaily = bucketCounts(
+    donations,
+    (d) => d.status === "AVAILABLE",
+    (d) => toNum(d.quantity),
+    (d) => new Date(d.pickup_window_end!).getTime(),
+  );
+  const quantityExpiredDaily = bucketCounts(
+    donations,
+    (d) => d.status === "EXPIRED" && !!d.pickup_window_end,
+    (d) => toNum(d.quantity),
+    (d) => new Date(d.pickup_window_end!).getTime(),
+  );
+
+  function sliceStats(series: number[]) {
+    const prev = series.slice(0, statsDays).reduce((a, b) => a + b, 0);
+    const curr = series.slice(statsDays).reduce((a, b) => a + b, 0);
+    return { current: curr, previous: prev, daily: series.slice(statsDays) };
+  }
 
   const statsSeries = {
-    created: {
-      current: createdCurr,
-      previous: createdPrev,
-      daily: spreadSeries(createdCurr),
-    },
-    claimed: {
-      current: claimedCurr,
-      previous: claimedPrev,
-      daily: spreadSeries(claimedCurr),
-    },
-    expired: {
-      current: expiredCurr,
-      previous: expiredPrev,
-      daily: spreadSeries(expiredCurr),
-    },
-    quantity: {
-      current: qtyCurr,
-      previous: qtyPrev,
-      daily: spreadSeries(qtyCurr),
-    },
+    created: sliceStats(createdDaily),
+    claimed: sliceStats(claimedDaily),
+    expired: sliceStats(expiredDaily),
+    quantityCreated: sliceStats(quantityCreatedDaily),
+    quantityClaimed: sliceStats(quantityClaimedDaily),
+    quantityExpired: sliceStats(quantityExpiredDaily),
   };
-
   // donor accordions
   const [showOpen, setShowOpen] = useState(true);
   const [showClaimed, setShowClaimed] = useState(false);
@@ -760,15 +842,29 @@ export default function Dashboard() {
               <h3 className="text-2xl font-semibold border-b pb-2">
                 Statistics
               </h3>
-              <div className="text-sm text-gray-600">
-                Showing last 7 days vs previous 7 days (auto).
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <span>Showing stats for:</span>
+                {[7, 14, 30].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`px-3 py-1 rounded-md border text-sm transition ${statsDays === d
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                      }`}
+                    onClick={() => setStatsDays(d)}
+                  >
+                    Last {d} days
+                  </button>
+                ))}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-1">
+              {/* First row: listing counts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-1">
                 <StatCard
                   title="Listings created"
                   current={statsSeries.created.current}
                   previous={statsSeries.created.previous}
-                  data={makeChartData(statsSeries.created.daily)}
+                  data={makeChartData(statsSeries.created.daily, now - statsDays * 24 * 60 * 60 * 1000)}
                   colorFrom="from-blue-50"
                   colorTo="to-blue-100"
                 />
@@ -776,7 +872,7 @@ export default function Dashboard() {
                   title="Listings claimed"
                   current={statsSeries.claimed.current}
                   previous={statsSeries.claimed.previous}
-                  data={makeChartData(statsSeries.claimed.daily)}
+                  data={makeChartData(statsSeries.claimed.daily, now - statsDays * 24 * 60 * 60 * 1000)}
                   colorFrom="from-green-50"
                   colorTo="to-green-100"
                 />
@@ -784,18 +880,40 @@ export default function Dashboard() {
                   title="Listings expired"
                   current={statsSeries.expired.current}
                   previous={statsSeries.expired.previous}
-                  data={makeChartData(statsSeries.expired.daily)}
-                  colorFrom="from-red-50"
-                  colorTo="to-red-100"
+                  data={makeChartData(statsSeries.expired.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-rose-50"
+                  colorTo="to-rose-100"
+                />
+              </div>
+
+              {/* Second row: food quantity stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                <StatCard
+                  title="Food quantity created"
+                  current={statsSeries.quantityCreated.current}
+                  previous={statsSeries.quantityCreated.previous}
+                  unit="portions"
+                  data={makeChartData(statsSeries.quantityCreated.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-amber-50"
+                  colorTo="to-amber-100"
                 />
                 <StatCard
-                  title="Food quantity"
-                  current={statsSeries.quantity.current}
-                  previous={statsSeries.quantity.previous}
+                  title="Food quantity claimed"
+                  current={statsSeries.quantityClaimed.current}
+                  previous={statsSeries.quantityClaimed.previous}
                   unit="portions"
-                  data={makeChartData(statsSeries.quantity.daily)}
-                  colorFrom="from-purple-50"
-                  colorTo="to-purple-100"
+                  data={makeChartData(statsSeries.quantityClaimed.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-emerald-50"
+                  colorTo="to-emerald-100"
+                />
+                <StatCard
+                  title="Food quantity expired"
+                  current={statsSeries.quantityExpired.current}
+                  previous={statsSeries.quantityExpired.previous}
+                  unit="portions"
+                  data={makeChartData(statsSeries.quantityExpired.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-indigo-50"
+                  colorTo="to-indigo-100"
                 />
               </div>
             </section>

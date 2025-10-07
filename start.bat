@@ -1,4 +1,5 @@
 @echo off
+
 REM Start backend in a new window
 cd backend
 start "" npx convex dev
