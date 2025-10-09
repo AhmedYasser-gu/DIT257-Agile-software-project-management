@@ -21,7 +21,7 @@ export default function AddressSearch({
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<GeoCandidate[]>([]);
   const [active, setActive] = useState(0);
-  const boxRef = useRef<HTMLDivElement | null>(null);
+  const boxRef = useRef<HTMLLabelElement | null>(null);
   const timer = useRef<number | null>(null);
 
   // Debounced fetch

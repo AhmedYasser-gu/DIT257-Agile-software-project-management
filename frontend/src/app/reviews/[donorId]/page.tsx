@@ -78,7 +78,9 @@ export default function DonorReviewsPage() {
 
       {/* Post review if user has not already reviewed */}
       {receiver &&
-        !data.reviews.some((r) => r.reciever_id === receiver._id) && (
+        !data.reviews.some(
+          (r: (typeof data.reviews)[number]) => r.reciever_id === receiver._id
+        ) && (
           <form onSubmit={handleSubmitReview} className="mb-6 space-y-2 p-4 border rounded shadow-sm">
             <h2 className="text-xl font-semibold">Leave a Review</h2>
             <select
@@ -115,7 +117,7 @@ export default function DonorReviewsPage() {
           <p>No reviews yet.</p>
         ) : (
           <ul className="space-y-4">
-            {data.reviews.map((r) => {
+            {data.reviews.map((r: (typeof data.reviews)[number]) => {
               const isOwnerOfReview = receiver && r.reciever_id === receiver._id;
 
               return (
