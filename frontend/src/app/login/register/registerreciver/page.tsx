@@ -85,7 +85,7 @@ export default function RegisterReciver() {
     if (!allValid) return;
     try {
       setSubmitting(true);
-      if (activeTab === "charity" && selectedCharityId && selectedCharityId !== NEW_CHARITY_VALUE) {
+      if (activeTab === "charity" && selectedCharityId && selectedCharityId !== NEW_CHARITY_VALUE && selectedCharityId !== "") {
         await registerReceiver({
           clerk_id: userId,
           first_name: firstName,
@@ -106,6 +106,8 @@ export default function RegisterReciver() {
           charity_contact_phone: charityPhone,
           charity_address: charityAddress,
         });
+      } else if (activeTab === "charity" && selectedCharityId === "") {
+        setError("Please choose an organization or add a new one.");
       } else {
         await registerReceiver({
           clerk_id: userId,
@@ -161,7 +163,11 @@ export default function RegisterReciver() {
               <>
                 <label className="grid gap-1">
                   <span className="label">Organization</span>
-                  <select className="input" value={selectedCharityId} onChange={e=>setSelectedCharityId(e.target.value)}>
+                  <select
+                    className="input"
+                    value={selectedCharityId}
+                    onChange={(e) => setSelectedCharityId(e.target.value as typeof selectedCharityId)}
+                  >
                     <option value="">Select charity…</option>
                     <option value={NEW_CHARITY_VALUE}>+ Add new charity</option>
                     {(charities || []).map((c: { _id: string; name: string }) => (
