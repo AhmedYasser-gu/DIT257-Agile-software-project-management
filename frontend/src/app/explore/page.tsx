@@ -9,6 +9,7 @@ import CategoryPill from "@/components/Badge/CategoryPill";
 import StatusBadge from "@/components/Badge/StatusBadge";
 import { fmt, minutesRemaining } from "@/helpers/time";
 import Link from "next/link";
+import Image from "next/image";
 import MapViewOpenLayers, { MapPoint } from "@/components/Map/MapViewOpenLayers";
 
 type SortKey = "soonest" | "newest" | "title";
@@ -188,7 +189,7 @@ export default function Explore() {
                     <li key={d._id} className="card donation-card flex items-start justify-between gap-4 overflow-hidden">
                       {d.imageUrl && (
                         <div className="shrink-0">
-                          <img src={d.imageUrl} alt={d.title} className="h-24 w-24 object-cover rounded-md" />
+                          <Image src={d.imageUrl} alt={d.title} width={96} height={96} className="h-24 w-24 object-cover rounded-md" unoptimized />
                         </div>
                       )}
                       <div className="grid gap-1 overflow-hidden">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import type { Id } from "../../../../../backend/convex/_generated/dataModel";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convexApi";
 import { useUser } from "@clerk/nextjs";
@@ -23,7 +24,7 @@ export default function DonorReviewsPage() {
   const toast = useToast();
 
   const data = useQuery(api.functions.reviews.listReviewsForDonor, {
-    donorId: donorId as any,
+    donorId: donorId as unknown as Id<"donors">,
   });
 
   const receiver = useQuery(
@@ -33,7 +34,7 @@ export default function DonorReviewsPage() {
 
   const isOwner = useQuery(
     api.functions.reviews.isDonorOwner,
-    isLoaded && user ? { userId: user.id, donorId: donorId as any } : "skip"
+    isLoaded && user ? { userId: user.id, donorId: donorId as unknown as Id<"donors"> } : "skip"
   );
 
   const addReview = useMutation(api.functions.reviews.addReview);
@@ -56,7 +57,7 @@ export default function DonorReviewsPage() {
 
     try {
       await addReview({
-        donor_id: donorId as any,
+        donor_id: donorId as unknown as Id<"donors">,
         reciever_id: receiver._id,
         rating,
         comment,
@@ -241,7 +242,7 @@ export default function DonorReviewsPage() {
                             try {
                               await addOrUpdateResponse({
                                 reviewId: r._id,
-                                donorId: donorId as any,
+                                donorId: donorId as unknown as Id<"donors">,
                                 response: responseText,
                               });
                               toast.success(r.response ? "Response updated!" : "Response posted!");

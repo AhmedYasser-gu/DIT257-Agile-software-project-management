@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import Access from "@/components/Access/Access";
 import Link from "next/link";
+import Image from "next/image";
 import ConfirmDialog from "@/components/Modal/ConfirmDialog";
 import DetailsDialog from "@/components/Modal/DetailsDialog";
 import { useToast } from "@/components/Toast/ToastContext";
@@ -35,6 +36,7 @@ type DonationRow = {
   status: DonationStatus;
   donor?: DonorMini | null;
   _creationTime?: number;
+  imageUrl?: string | null;
 };
 
 type ClaimRow = {
@@ -519,9 +521,9 @@ export default function Dashboard() {
                         key={d._id}
                         className="card donation-card flex items-start justify-between gap-4 overflow-hidden"
                       >
-                        {((d as any).imageUrl) && (
+                        {(d.imageUrl) && (
                           <div className="shrink-0">
-                            <img src={(d as any).imageUrl} alt={d.title} className="h-24 w-24 object-cover rounded-md" />
+                            <Image src={d.imageUrl as string} alt={d.title} width={96} height={96} className="h-24 w-24 object-cover rounded-md" unoptimized />
                           </div>
                         )}
                         <div className="grid gap-1 overflow-hidden">
@@ -704,8 +706,8 @@ export default function Dashboard() {
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex items-start gap-4">
-                        {((d as any).imageUrl) && (
-                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                        {(d.imageUrl) && (
+                          <Image src={d.imageUrl as string} alt={d.title} width={80} height={80} className="h-20 w-20 object-cover rounded-md shrink-0" unoptimized />
                         )}
                         <div className="min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
@@ -756,8 +758,8 @@ export default function Dashboard() {
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex items-start gap-4">
-                        {((d as any).imageUrl) && (
-                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                        {(d.imageUrl) && (
+                          <Image src={d.imageUrl as string} alt={d.title} width={80} height={80} className="h-20 w-20 object-cover rounded-md shrink-0" unoptimized />
                         )}
                         <div className="min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
@@ -808,8 +810,8 @@ export default function Dashboard() {
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex items-start gap-4">
-                        {((d as any).imageUrl) && (
-                          <img src={(d as any).imageUrl} alt={d.title} className="h-20 w-20 object-cover rounded-md shrink-0" />
+                        {(d.imageUrl) && (
+                          <Image src={d.imageUrl as string} alt={d.title} width={80} height={80} className="h-20 w-20 object-cover rounded-md shrink-0" unoptimized />
                         )}
                         <div className="min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>

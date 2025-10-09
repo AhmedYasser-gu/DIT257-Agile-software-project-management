@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import type { Id } from "../../../../../../backend/convex/_generated/dataModel";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
@@ -21,7 +22,7 @@ export default function RegisterReciver() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
-  const [selectedCharityId, setSelectedCharityId] = useState<string>("");
+  const [selectedCharityId, setSelectedCharityId] = useState<Id<"charities"> | "" | typeof NEW_CHARITY_VALUE>("");
   const NEW_CHARITY_VALUE = "__new_charity__";
   // Inline charity creation
   const [charityName, setCharityName] = useState("");
@@ -91,8 +92,8 @@ export default function RegisterReciver() {
           last_name: lastName,
           phone,
           food_allergy: undefined,
-          charity_id: selectedCharityId as any,
-        } as any);
+          charity_id: selectedCharityId as Id<"charities">,
+        });
       } else if (activeTab === "charity" && selectedCharityId === NEW_CHARITY_VALUE) {
         await registerReceiver({
           clerk_id: userId,
@@ -104,7 +105,7 @@ export default function RegisterReciver() {
           charity_contact_email: charityEmail,
           charity_contact_phone: charityPhone,
           charity_address: charityAddress,
-        } as any);
+        });
       } else {
         await registerReceiver({
           clerk_id: userId,
@@ -112,7 +113,7 @@ export default function RegisterReciver() {
           last_name: lastName,
           phone,
           food_allergy: foodAllergy || undefined,
-        } as any);
+        });
       }
       setCompleted(true);
       window.location.assign("/dashboard");

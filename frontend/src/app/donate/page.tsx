@@ -110,7 +110,7 @@ export default function Donate() {
     setErrorMessage("");
 
     // Process and upload images first (optional)
-    let imageIds: string[] = [];
+    const imageIds: string[] = [];
     if (files.length > 0) {
       setUploading(true);
       try {
