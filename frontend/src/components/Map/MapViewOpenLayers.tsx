@@ -67,7 +67,7 @@ export default function MapViewOpenLayers({
   height = 360,
   className,
   showLegend = true,
-  emptyMessage = "No donor locations with pins around you yet.",
+  emptyMessage = "No donor locations with pins around you yet 🌍.",
   legendMode = "auto",
   radiusKm,
 }: {
