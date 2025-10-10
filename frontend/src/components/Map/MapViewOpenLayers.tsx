@@ -483,6 +483,18 @@ export default function MapViewOpenLayers({
 
         <div ref={containerRef} style={{ height }} className="w-full" />
 
+        {/* Empty state when there are no pins and we're not in picker mode */}
+        {!hasPins && !onChange && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            aria-live="polite"
+          >
+            <div className="bg-white/95 text-sm border rounded-md px-3 py-2 shadow-sm">
+              {emptyMessage}
+            </div>
+          </div>
+        )}
+
         {showLegend && (
           <div className="absolute bottom-3 right-3 rounded-md bg-white/95 px-3 py-2 shadow-md text-xs border">
             <div className="font-medium mb-1">Legend</div>
