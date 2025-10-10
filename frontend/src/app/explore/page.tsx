@@ -35,6 +35,46 @@ type AvailableDonation = {
 
 const toNum = (x: number | bigint) => (typeof x === "bigint" ? Number(x) : x);
 
+type AvailableDonationWithDistance = AvailableDonation & { distanceKm?: number | null };
+
+const distanceFilters = [
+  { value: "any", label: "All distances" },
+  { value: "1", label: "Within 1 km" },
+  { value: "5", label: "Within 5 km" },
+  { value: "10", label: "Within 10 km" },
+  { value: "25", label: "Within 25 km" },
+  { value: "50", label: "Within 50 km" },
+];
+
+const EARTH_RADIUS_KM = 6371;
+
+const toRadians = (deg: number) => (deg * Math.PI) / 180;
+
+function distanceKmBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+
+  const c = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  const distance = 2 * Math.atan2(Math.sqrt(c), Math.sqrt(1 - c));
+  return EARTH_RADIUS_KM * distance;
+}
+
+function formatDistance(km: number) {
+  if (!Number.isFinite(km)) return null;
+  if (km < 1) {
+    return `${Math.round(km * 1000)} m`;
+  }
+  if (km < 10) {
+    return `${km.toFixed(1)} km`;
+  }
+  return `${Math.round(km)} km`;
+}
+
 export default function Explore() {
   const data = useQuery(api.functions.listAvailableDonations.listAvailableDonations) as
     | AvailableDonation[]
@@ -43,6 +83,7 @@ export default function Explore() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("soonest");
+  const [distanceFilter, setDistanceFilter] = useState<string>("any");
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
 
 
@@ -65,12 +106,34 @@ export default function Explore() {
 
   // device location
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setMe(null),
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+    let cancelled = false;
+    const options: PositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000,
+    };
+
+    const handleSuccess = (pos: GeolocationPosition) => {
+      if (cancelled) return;
+      setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    };
+
+    const handleError = () => {
+      if (cancelled) return;
+      setMe((prev) => prev ?? null);
+    };
+
+    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
+    const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, options);
+
+    return () => {
+      cancelled = true;
+      if (typeof watchId === "number") {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   const cats = useMemo(() => {
@@ -79,8 +142,25 @@ export default function Explore() {
     return ["all", ...Array.from(c)];
   }, [data]);
 
-  const list = useMemo(() => {
-    let L = (data ?? []).slice();
+  const list = useMemo<AvailableDonationWithDistance[]>(() => {
+    let L: AvailableDonationWithDistance[] = (data ?? []).map((d) => ({ ...d }));
+    if (me) {
+      L = L.map((d) => {
+        const donorLat = d.donor?.lat;
+        const donorLng = d.donor?.lng;
+        if (Number.isFinite(donorLat) && Number.isFinite(donorLng)) {
+          return {
+            ...d,
+            distanceKm: distanceKmBetween(me, {
+              lat: donorLat as number,
+              lng: donorLng as number,
+            }),
+          };
+        }
+        return { ...d, distanceKm: null };
+      });
+    }
+
     if (q.trim()) {
       const t = q.toLowerCase();
       L = L.filter(
@@ -91,6 +171,14 @@ export default function Explore() {
       );
     }
     if (cat !== "all") L = L.filter((d) => d.category === cat);
+    if (distanceFilter !== "any" && me) {
+      const limit = Number(distanceFilter);
+      if (Number.isFinite(limit)) {
+        L = L.filter((d) =>
+          d.distanceKm === null ? false : (d.distanceKm ?? Infinity) <= limit
+        );
+      }
+    }
     L.sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
       if (sort === "newest") return (b._id ?? "").localeCompare(a._id ?? "");
@@ -103,7 +191,7 @@ export default function Explore() {
       return ae - be;
     });
     return L;
-  }, [data, q, cat, sort]);
+  }, [data, q, cat, sort, distanceFilter, me]);
 
   // PER‑DONATION points; MapView will group them for the tooltip
   const points: MapPoint[] = useMemo(
@@ -129,40 +217,54 @@ export default function Explore() {
     <Access requireAuth allowUserTypes={["receiver"]}>
       <section className="grid gap-4">
         {/* Controls */}
-        <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div className="grid gap-4 sm:flex sm:flex-wrap sm:items-start sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold">Nearby donations</h2>
             <p className="text-subtext text-sm">Browse and claim food that’s still good!</p>
           </div>
-          <div className="flex gap-2">
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:items-center sm:gap-2">
             <input
-              className="input"
+              className="input w-full sm:w-52"
               placeholder="Search (title, description, donor)…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
-            <select className="input" value={cat} onChange={(e) => setCat(e.target.value)}>
-              {cats.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <select className="input" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-              <option value="soonest">Soonest pickup</option>
-              <option value="newest">Newest</option>
-              <option value="title">Title</option>
-            </select>
+            <div className="grid gap-2 sm:flex sm:gap-2">
+              <select className="input w-full sm:w-40" value={cat} onChange={(e) => setCat(e.target.value)}>
+                {cats.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input w-full sm:w-40"
+                value={distanceFilter}
+                onChange={(e) => setDistanceFilter(e.target.value)}
+              >
+                {distanceFilters.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              <select className="input w-full sm:w-40" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+                <option value="soonest">Soonest pickup</option>
+                <option value="newest">Newest</option>
+                <option value="title">Title</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid gap-4 md:grid-cols-2">
           <MapViewOpenLayers
             className="order-1 md:order-none"
             points={points}
             userLocation={me}
             height={360}
             emptyMessage="No donors with available location shared yet."
+            radiusKm={distanceFilter !== "any" ? Number(distanceFilter) : null}
           />
 
           <div className="order-2 md:order-none">
@@ -185,52 +287,69 @@ export default function Explore() {
               <ul className="grid gap-3">
                 {list.map((d) => {
                   const mins = minutesRemaining(d.pickup_window_end);
+                  const distanceLabel =
+                    me && Number.isFinite(d.distanceKm) && d.distanceKm !== null
+                      ? formatDistance(d.distanceKm as number)
+                      : null;
                   return (
-                    <li key={d._id} className="card donation-card flex items-start justify-between gap-4 overflow-hidden">
-                      {d.imageUrl && (
-                        <div className="shrink-0">
-                          <Image src={d.imageUrl} alt={d.title} width={96} height={96} className="h-24 w-24 object-cover rounded-md" unoptimized />
-                        </div>
-                      )}
-                      <div className="grid gap-1 overflow-hidden">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
-                          <CategoryPill label={d.category} />
-                          <StatusBadge status={d.status} />
-                        </div>
-                        <div className="text-sm text-subtext line-clamp-2 break-anywhere">
-                          Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
-                        </div>
-                        <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                          Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
-                          {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
-                        </div>
-                        {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
-
-                        {d.donor?._id && donorReviews && (
-                          <div className="text-sm line-clamp-2">
-                            {(() => {
-                              const avg = getAvgRating(d.donor._id);
-                              if (!avg) return "No reviews yet";
-                              const fullStars = Math.floor(avg);
-                              const halfStar = avg - fullStars >= 0.5;
-                              return (
-                                <>
-                                  {"⭐".repeat(fullStars)}
-                                  {halfStar && "✩"} ({avg.toFixed(1)})
-                                </>
-                              );
-                            })()}
+                    <li
+                      key={d._id}
+                      className="card donation-card flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:flex-1">
+                        {d.imageUrl && (
+                          <div className="relative h-32 w-full overflow-hidden rounded-md sm:h-24 sm:w-24 sm:shrink-0">
+                            <Image
+                              src={d.imageUrl}
+                              alt={d.title}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 640px) 100vw, 96px"
+                              unoptimized
+                            />
                           </div>
                         )}
+                        <div className="grid gap-1 overflow-hidden">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 overflow-hidden">
+                            <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                            <CategoryPill label={d.category} />
+                            <StatusBadge status={d.status} />
+                          </div>
+                          <div className="text-sm text-subtext line-clamp-2 break-anywhere">
+                            Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
+                          </div>
+                          <div className="text-xs text-subtext line-clamp-2 break-anywhere">
+                            Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
+                            {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
+                            {distanceLabel && <span> · {distanceLabel} away</span>}
+                          </div>
+                          {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
+
+                          {d.donor?._id && donorReviews && (
+                            <div className="text-sm line-clamp-2">
+                              {(() => {
+                                const avg = getAvgRating(d.donor._id);
+                                if (!avg) return "No reviews yet";
+                                const fullStars = Math.floor(avg);
+                                const halfStar = avg - fullStars >= 0.5;
+                                return (
+                                  <>
+                                    {"⭐".repeat(fullStars)}
+                                    {halfStar && "✩"} ({avg.toFixed(1)})
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                    <div className="flex gap-2">
-                      <Link className="btn-primary" href="/dashboard">
-                        Proceed
-                      </Link>
-                    </div>
-                  </li>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Link className="btn-primary" href="/dashboard">
+                          Proceed
+                        </Link>
+                      </div>
+                    </li>
                   );
                 })}
               </ul>

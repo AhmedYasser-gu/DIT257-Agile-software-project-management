@@ -1,5 +1,8 @@
 # 🥗 No Leftovers — Team 3 AGR
 
+[![Frontend CI](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/frontend-ci.yml)
+[![Backend CI](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/backend-ci.yml)
+
 _Academic project for DIT257 Agile Software Project Management @ University of Gothenburg / Chalmers_
 
 A full-stack food donation platform that connects restaurants and stores with NGOs and individuals to reduce food waste -> aligned with **UN SDG #2: Zero Hunger**.

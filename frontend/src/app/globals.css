@@ -25,7 +25,11 @@ body {
 
 /* Donation card fixed sizing and text clamping */
 .donation-card {
-  @apply break-words whitespace-normal overflow-hidden h-44; /* 11rem fixed height */
+  @apply break-words whitespace-normal overflow-hidden md:h-44;
+}
+
+.donation-card-content {
+  @apply flex flex-col gap-1 overflow-hidden;
 }
 
 .line-clamp-1 {

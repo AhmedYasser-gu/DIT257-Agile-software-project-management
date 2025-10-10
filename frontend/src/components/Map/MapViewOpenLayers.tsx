@@ -10,6 +10,7 @@ import OSM from "ol/source/OSM";
 import { fromLonLat, toLonLat } from "ol/proj";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
+import CircleGeom from "ol/geom/Circle";
 import Style from "ol/style/Style";
 import CircleStyle from "ol/style/Circle";
 import Fill from "ol/style/Fill";
@@ -66,8 +67,9 @@ export default function MapViewOpenLayers({
   height = 360,
   className,
   showLegend = true,
-  emptyMessage = "No donor locations with pins around you yet.",
+  emptyMessage = "No donor locations with pins around you yet 🌍.",
   legendMode = "auto",
+  radiusKm,
 }: {
   points?: MapPoint[];
   userLocation?: LatLng | null;
@@ -78,6 +80,7 @@ export default function MapViewOpenLayers({
   showLegend?: boolean;
   emptyMessage?: string;
   legendMode?: "auto" | "pickerOnly" | "full";
+  radiusKm?: number | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<OlMap | null>(null);
@@ -85,9 +88,11 @@ export default function MapViewOpenLayers({
   const srcPinsRef = useRef<VectorSource | null>(null);
   const srcUserRef = useRef<VectorSource | null>(null);
   const srcPickerRef = useRef<VectorSource | null>(null);
+  const srcRadiusRef = useRef<VectorSource | null>(null);
 
   const userFeatRef = useRef<Feature<Point> | null>(null);
   const pickerFeatRef = useRef<Feature<Point> | null>(null);
+  const radiusFeatRef = useRef<Feature<CircleGeom> | null>(null);
 
   const overlayRef = useRef<Overlay | null>(null);
   const overlayElRef = useRef<HTMLDivElement | null>(null);
@@ -112,10 +117,12 @@ export default function MapViewOpenLayers({
     const srcPins = new VectorSource();
     const srcUser = new VectorSource();
     const srcPicker = new VectorSource();
+    const srcRadius = new VectorSource();
 
     srcPinsRef.current = srcPins;
     srcUserRef.current = srcUser;
     srcPickerRef.current = srcPicker;
+    srcRadiusRef.current = srcRadius;
 
     const pinsLayer = new VectorLayer({
       source: srcPins,
@@ -132,9 +139,21 @@ export default function MapViewOpenLayers({
       style: markerStyle("#4CAF50"), // Selected
     });
 
+    const radiusLayer = new VectorLayer({
+      source: srcRadius,
+      style: new Style({
+        fill: new Fill({ color: "rgba(59, 130, 246, 0.12)" }),
+        stroke: new Stroke({
+          color: "rgba(59, 130, 246, 0.6)",
+          width: 2,
+          lineDash: [4, 4],
+        }),
+      }),
+    });
+
     const map = new OlMap({
       target: containerRef.current,
-      layers: [base, pinsLayer, userLayer, pickerLayer],
+      layers: [base, radiusLayer, pinsLayer, userLayer, pickerLayer],
       view: new View({
         center: fromLonLat(PARIS),
         zoom: 3,
@@ -199,8 +218,10 @@ export default function MapViewOpenLayers({
       srcPinsRef.current = null;
       srcUserRef.current = null;
       srcPickerRef.current = null;
+      srcRadiusRef.current = null;
       pickerFeatRef.current = null;
       userFeatRef.current = null;
+      radiusFeatRef.current = null;
       overlayRef.current = null;
       overlayElRef.current = null as unknown as HTMLDivElement;
     };
@@ -231,10 +252,15 @@ export default function MapViewOpenLayers({
     const map = mapRef.current;
     const srcPins = srcPinsRef.current;
     const srcUser = srcUserRef.current;
+    const srcRadius = srcRadiusRef.current;
     if (!map || !srcPins || !srcUser) return;
 
     srcPins.clear();
     srcUser.clear();
+    if (srcRadius) {
+      srcRadius.clear();
+      radiusFeatRef.current = null;
+    }
 
     // user marker (orange)
     const hasUser =
@@ -350,6 +376,11 @@ export default function MapViewOpenLayers({
       haveExtent = true;
     }
 
+    if (radiusFeatRef.current) {
+      extendExtent(ext, radiusFeatRef.current.getGeometry()!.getExtent());
+      haveExtent = true;
+    }
+
     if (haveExtent) {
       try {
         view.fit(ext, {
@@ -371,7 +402,36 @@ export default function MapViewOpenLayers({
     userLocation?.lng,
     value?.lat,
     value?.lng,
+    radiusKm,
   ]);
+
+  // Draw radius ring when provided
+  useEffect(() => {
+    const srcRadius = srcRadiusRef.current;
+    if (!srcRadius) return;
+
+    srcRadius.clear();
+    radiusFeatRef.current = null;
+
+    if (
+      !userLocation ||
+      !Number.isFinite(userLocation.lat) ||
+      !Number.isFinite(userLocation.lng) ||
+      !Number.isFinite(radiusKm) ||
+      !radiusKm ||
+      radiusKm <= 0
+    ) {
+      return;
+    }
+
+    const radiusMeters = radiusKm * 1000;
+    const center = fromLonLat([userLocation.lng, userLocation.lat]);
+    const geometry = new CircleGeom(center, radiusMeters);
+
+    const feature = new Feature({ geometry });
+    srcRadius.addFeature(feature);
+    radiusFeatRef.current = feature;
+  }, [userLocation?.lat, userLocation?.lng, radiusKm]);
 
   // reflect picker value from props
   useEffect(() => {
@@ -402,18 +462,6 @@ export default function MapViewOpenLayers({
     }
   }
 
-  // Empty state only when truly nothing to show
-  if (!hasPins && !userLocation && !value && !onChange) {
-    return (
-      <div className={className}>
-        <div className="card p-6">
-          <div className="font-medium mb-1">Map</div>
-          <div className="text-subtext text-sm">{emptyMessage}</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={className}>
       <div className="card overflow-hidden p-0 relative">
@@ -434,6 +482,18 @@ export default function MapViewOpenLayers({
         </div>
 
         <div ref={containerRef} style={{ height }} className="w-full" />
+
+        {/* Empty state when there are no pins and we're not in picker mode */}
+        {!hasPins && !onChange && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            aria-live="polite"
+          >
+            <div className="bg-white/95 text-sm border rounded-md px-3 py-2 shadow-sm">
+              {emptyMessage}
+            </div>
+          </div>
+        )}
 
         {showLegend && (
           <div className="absolute bottom-3 right-3 rounded-md bg-white/95 px-3 py-2 shadow-md text-xs border">

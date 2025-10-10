@@ -20,7 +20,7 @@ describe("MapViewOpenLayers", () => {
   });
 
   it("renders empty card when no data", () => {
-    render(<MapViewOpenLayers height={180} emptyMessage="Nada" />);
+    render(<MapViewOpenLayers height={180} points={[]} emptyMessage="Nada" />);
     expect(screen.getByText("Nada")).toBeInTheDocument();
   });
 });
