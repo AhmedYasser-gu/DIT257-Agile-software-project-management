@@ -78,13 +78,23 @@ const makeChartData = (arr: number[], startTs: number) => {
   });
 };
 function calcChange(current: number, previous: number) {
-  if (previous === 0) return { percent: 100, trend: "up" as const };
+  if (previous === 0) {
+    // No comparison if no previous data
+    return { percent: null, trend: null };
+  }
   const diff = current - previous;
   const percent = Math.round((Math.abs(diff) / previous) * 100);
   return { percent, trend: diff >= 0 ? ("up" as const) : ("down" as const) };
 }
 
-/* Donor Stat UI widgets*/
+// Helper to format large numbers (1.2K, 3.4M, etc.)
+function formatNumber(value: number): string {
+  if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + "B";
+  if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + "M";
+  if (value >= 1_000) return (value / 1_000).toFixed(1) + "K";
+  return value.toString();
+}
+
 type StatCardProps = {
   title: string;
   current: number;
@@ -94,6 +104,7 @@ type StatCardProps = {
   colorTo: string;
   data: { day: string; value: number }[];
 };
+
 function StatCard({
   title,
   current,
@@ -105,24 +116,32 @@ function StatCard({
 }: StatCardProps) {
   const { percent, trend } = calcChange(current, previous);
   const isUp = trend === "up";
+
   return (
     <div
       className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm flex flex-col`}
     >
       <div>
         <h3 className="text-sm text-gray-700">{title}</h3>
+
         <p className="text-2xl font-bold">
-          {current} {unit}
+          {formatNumber(current)} {unit}
         </p>
+
         <p className="text-xs text-gray-600">
-          Prev: {previous} {unit}
+          Prev: {formatNumber(previous)} {unit}
         </p>
-        <p
-          className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"}`}
-        >
-          {isUp ? "▲" : "▼"} {percent}%
-        </p>
+
+        {percent !== null && (
+          <p
+            className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"
+              }`}
+          >
+            {isUp ? "▲" : "▼"} {percent}%
+          </p>
+        )}
       </div>
+
       <div className="mt-3 h-20">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
@@ -147,7 +166,6 @@ function StatCard({
     </div>
   );
 }
-
 // ---------- main page ----------
 export default function Dashboard() {
   const { userId } = useAuth();
