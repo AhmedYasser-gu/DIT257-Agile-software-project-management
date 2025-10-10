@@ -9,8 +9,6 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 
-import { useEffect, useState } from "react";
-
 export default function NavBar() {
 
   const pathname = usePathname();
@@ -135,13 +133,6 @@ const langBadge = (current: "en" | "sv") => (
              
           <SignedIn>
             {userTypeBadge}
-            {status && status.registered && status.userType && (
-              <span className="text-xs px-2 py-1 rounded bg-[#E0E0E0] text-[#212121]">
-                {status.userType.charAt(0).toUpperCase() +
-                  status.userType.slice(1)}{" "}
-                Account
-              </span>
-            )}
             <UserButton userProfileUrl="/profile" afterSignOutUrl="/" />
           </SignedIn>
           <SignedOut>{/* no auth buttons when signed out */}</SignedOut>
