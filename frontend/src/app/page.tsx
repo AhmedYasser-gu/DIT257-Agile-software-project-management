@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { SignedOut, SignedIn } from "@clerk/nextjs";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function Home() {
+
+  const { t } = useLanguage();
+
   return (
     <section className="grid gap-6">
       <div className="card">

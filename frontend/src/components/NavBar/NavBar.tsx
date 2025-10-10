@@ -69,21 +69,24 @@ const langBadge = (current: "en" | "sv") => (
   if (hide) return null;
 
   const linksLoggedOut = [
-    { href: "/", label: t("Home"), exact: true },
-    { href: "/how-it-works", label: t("How it works") },
-  ];
-  const linksDonor = [
-    { href: "/", label: t("Home"), exact: true },
-    { href: "/dashboard", label: t("Dashboard") },
-    { href: "/donate", label: t("Post Donation") },
-    { href: "/how-it-works", label: t("How it works") },
-  ];
-  const linksReceiver = [
-    { href: "/", label: t("Home"), exact: true },
-    { href: "/explore", label: t("Explore") },
-    { href: "/dashboard", label: t("Dashboard") },
-    { href: "/how-it-works", label: t("How it works") },
-  ];
+  { href: "/", label: t("home"), exact: true },
+  { href: "/how-it-works", label: t("how_it_works") },
+];
+
+const linksDonor = [
+  { href: "/", label: t("home"), exact: true },
+  { href: "/dashboard", label: t("dashboard") },
+  { href: "/donate", label: t("donate") },
+  { href: "/how-it-works", label: t("how_it_works") },
+];
+
+const linksReceiver = [
+  { href: "/", label: t("home"), exact: true },
+  { href: "/explore", label: t("explore") },
+  { href: "/dashboard", label: t("dashboard") },
+  { href: "/how-it-works", label: t("how_it_works") },
+];
+
 
   let links = linksLoggedOut;
   if (userId) {
@@ -126,12 +129,12 @@ const langBadge = (current: "en" | "sv") => (
               <UserButton userProfileUrl="/profile" afterSignOutUrl="/">
                 <UserButton.MenuItems>
                   <UserButton.Action
-                    label={t("Language")}
+                    label={t("language")}
                     labelIcon={langBadge(lang)}
                     onClick={() => setLang(lang === "en" ? "sv" : "en")}
                   />
                   <UserButton.Action
-                    label={t("Theme")}
+                    label={t("theme")}
                     labelIcon={toggleIcon(current === "dark")}
                     onClick={() => setTheme(current === "dark" ? "light" : "dark")}
                   />
