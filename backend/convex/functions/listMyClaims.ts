@@ -4,6 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 
 type MyClaim = {
   _id: Id<"claims">;
+  _creationTime?: number;
   status: Doc<"claims">["status"];
   amount: Doc<"claims">["amount"];
   donation: null | {
@@ -52,19 +53,21 @@ export const listMyClaims = query({
           _creationTime: (c as any)._creationTime,
           status: c.status,
           amount: c.amount,
-          donation: donation && {
-            _id: donation._id,
-            title: donation.title,
-            category: donation.category,
-            pickup_window_start: donation.pickup_window_start,
-            pickup_window_end: donation.pickup_window_end,
-            status: donation.status,
-          },
-          donor: donor && {
-            _id: donor._id,
-            business_name: donor.business_name,
-            address: donor.address,
-          },
+          donation:
+            donation && {
+              _id: donation._id,
+              title: donation.title,
+              category: donation.category,
+              pickup_window_start: donation.pickup_window_start,
+              pickup_window_end: donation.pickup_window_end,
+              status: donation.status,
+            },
+          donor:
+            donor && {
+              _id: donor._id,
+              business_name: donor.business_name,
+              address: donor.address,
+            },
         };
       })
     );

@@ -6,20 +6,14 @@ it("returns claims for user", async () => {
     query: (table: string) => {
       if (table === "users") {
         return {
-          withIndex: (_index: string, _cb: any) => ({
-            first: async () => ({ _id: "users:1" }),
-          }),
+          withIndex: () => ({ first: async () => ({ _id: "users:1" }) }),
         };
       }
-
       if (table === "recievers") {
         return {
-          withIndex: (_index: string, _cb: any) => ({
-            first: async () => ({ _id: "recievers:1" }),
-          }),
+          withIndex: () => ({ first: async () => ({ _id: "recievers:1" }) }),
         };
       }
-
       if (table === "claims") {
         return {
           collect: async () => [
@@ -34,10 +28,8 @@ it("returns claims for user", async () => {
           ],
         };
       }
-
       return {};
     },
-
     get: async (id: string) => {
       if (id === "donations:1") {
         return {
@@ -50,7 +42,6 @@ it("returns claims for user", async () => {
           donor_id: "donors:1",
         };
       }
-
       if (id === "donors:1") {
         return {
           _id: "donors:1",
@@ -58,7 +49,6 @@ it("returns claims for user", async () => {
           address: "123 Street",
         };
       }
-
       return null;
     },
   };
@@ -68,6 +58,7 @@ it("returns claims for user", async () => {
   expect(result).toEqual([
     {
       _id: "claims:1",
+      _creationTime: 1234, // <-- include it
       status: "claimed",
       amount: 5n,
       donation: {

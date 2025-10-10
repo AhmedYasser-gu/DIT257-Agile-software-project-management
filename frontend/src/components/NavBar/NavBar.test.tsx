@@ -11,7 +11,9 @@ vi.mock("next/navigation", () => ({
 // ---- NavLink: simple anchor
 vi.mock("@/components/NavLink/NavLink", () => ({
   default: ({ href, exact, children, ...rest }: any) => (
-    <a href={href} data-exact={!!exact} {...rest}>{children}</a>
+    <a href={href} data-exact={!!exact} {...rest}>
+      {children}
+    </a>
   ),
 }));
 
@@ -30,7 +32,9 @@ vi.mock("convex/react", async (orig) => {
   const actual = await orig();
   return { ...actual, useQuery: () => q.value };
 });
-vi.mock("@/convexApi", () => ({ api: { functions: { createUser: { getRegistrationStatus: {} } } } }));
+vi.mock("@/convexApi", () => ({
+  api: { functions: { createUser: { getRegistrationStatus: {} } } },
+}));
 
 beforeEach(() => {
   auth.userId = null;
@@ -46,8 +50,8 @@ describe("NavBar", () => {
   });
 
   it("shows logged-out links when no user", () => {
-    auth.userId = null;           // logged out
-    nav.pathname = "/";           // normal page
+    auth.userId = null; // logged out
+    nav.pathname = "/"; // normal page
     render(<NavBar />);
     expect(screen.getByText("No Leftovers")).toBeInTheDocument();
     expect(screen.getByText("Home")).toBeInTheDocument();

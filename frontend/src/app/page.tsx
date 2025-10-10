@@ -12,7 +12,6 @@ type ClaimRow = {
   donation?: { title?: string; pickup_window_start?: string } | null;
   donor?: { business_name?: string } | null;
 };
-import { useLanguage } from "@/components/LanguageProvider";
 
 export default function Home() {
   const { userId } = useAuth();
@@ -89,9 +88,6 @@ export default function Home() {
   };
 
   const fmtDuration = (ms: number) => formatHMS(ms);
-
-
-  const { t } = useLanguage();
 
   return (
     <section className="grid gap-6">
