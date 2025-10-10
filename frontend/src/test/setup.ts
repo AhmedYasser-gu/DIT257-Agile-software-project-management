@@ -20,8 +20,13 @@ vi.mock("next/navigation", () => ({
 
 // ---- Convex hooks (overridden per-test if needed)
 vi.mock("convex/react", async (orig) => {
-  const actual = await orig();
-  return { ...actual, useQuery: vi.fn(), useMutation: vi.fn() };
+  const actualModule = await orig();
+  const actual = (actualModule ?? {}) as Record<string, unknown>;
+  return {
+    ...actual,
+    useQuery: vi.fn(),
+    useMutation: vi.fn(),
+  };
 });
 
 // ---- OpenLayers light mocks

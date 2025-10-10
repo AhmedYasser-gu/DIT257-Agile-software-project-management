@@ -22,7 +22,7 @@ describe("image helpers", () => {
           getContext: vi.fn().mockReturnValue({
             drawImage: vi.fn(),
           }),
-          toBlob: (cb: (b: Blob | null) => void, type: string, quality?: number) =>
+          toBlob: (cb: (b: Blob | null) => void, _type: string, _quality?: number) =>
             cb(new Blob(["x"], { type: "image/webp" })),
         };
         return node;

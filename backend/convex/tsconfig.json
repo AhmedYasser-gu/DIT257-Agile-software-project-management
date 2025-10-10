@@ -13,7 +13,7 @@
     "allowSyntheticDefaultImports": true,
 
     /* These compiler options are required by Convex */
-    "target": "ESNext",
+    "target": "ES2020",
     "lib": ["ES2021", "dom"],
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",

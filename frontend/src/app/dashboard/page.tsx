@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import Access from "@/components/Access/Access";
 import Link from "next/link";
+import Image from "next/image";
 import ConfirmDialog from "@/components/Modal/ConfirmDialog";
 import DetailsDialog from "@/components/Modal/DetailsDialog";
 import { useToast } from "@/components/Toast/ToastContext";
@@ -35,6 +36,7 @@ type DonationRow = {
   status: DonationStatus;
   donor?: DonorMini | null;
   _creationTime?: number;
+  imageUrl?: string | null;
 };
 
 type ClaimRow = {
@@ -551,18 +553,22 @@ export default function Dashboard() {
                         className="card donation-card flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:flex-1">
-                          {((d as any).imageUrl) && (
-                            <img
-                              src={(d as any).imageUrl}
-                              alt={d.title}
-                              className="h-32 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
-                            />
+                          {d.imageUrl && (
+                            <div className="relative h-32 w-full overflow-hidden rounded-md sm:h-24 sm:w-24 sm:shrink-0">
+                              <Image
+                                src={d.imageUrl}
+                                alt={d.title}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 640px) 100vw, 96px"
+                                unoptimized
+                              />
+                            </div>
                           )}
                           <div className="grid gap-1 overflow-hidden">
                             <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
                             <div className="text-sm text-subtext line-clamp-2 break-anywhere">
-                              {d.category} · Qty: {fmtQty(d.quantity)} ·{" "}
-                              {d.donor?.business_name ?? "Unknown donor"}
+                              {d.category} · Qty: {fmtQty(d.quantity)} · {d.donor?.business_name ?? "Unknown donor"}
                             </div>
                             <div className="text-xs text-subtext line-clamp-2 break-anywhere">
                               Pickup: {d.pickup_window_start} → {d.pickup_window_end}
@@ -756,12 +762,17 @@ export default function Dashboard() {
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        {((d as any).imageUrl) && (
-                          <img
-                            src={(d as any).imageUrl}
-                            alt={d.title}
-                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
-                          />
+                        {d.imageUrl && (
+                          <div className="relative h-24 w-full overflow-hidden rounded-md sm:h-24 sm:w-24 sm:shrink-0">
+                            <Image
+                              src={d.imageUrl}
+                              alt={d.title}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 640px) 100vw, 96px"
+                              unoptimized
+                            />
+                          </div>
                         )}
                         <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
@@ -812,12 +823,17 @@ export default function Dashboard() {
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        {((d as any).imageUrl) && (
-                          <img
-                            src={(d as any).imageUrl}
-                            alt={d.title}
-                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
-                          />
+                        {d.imageUrl && (
+                          <div className="relative h-24 w-full overflow-hidden rounded-md sm:h-24 sm:w-24 sm:shrink-0">
+                            <Image
+                              src={d.imageUrl}
+                              alt={d.title}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 640px) 100vw, 96px"
+                              unoptimized
+                            />
+                          </div>
                         )}
                         <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
@@ -868,12 +884,17 @@ export default function Dashboard() {
                       className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        {((d as any).imageUrl) && (
-                          <img
-                            src={(d as any).imageUrl}
-                            alt={d.title}
-                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
-                          />
+                        {d.imageUrl && (
+                          <div className="relative h-24 w-full overflow-hidden rounded-md sm:h-24 sm:w-24 sm:shrink-0">
+                            <Image
+                              src={d.imageUrl}
+                              alt={d.title}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 640px) 100vw, 96px"
+                              unoptimized
+                            />
+                          </div>
                         )}
                         <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
