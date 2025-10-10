@@ -192,6 +192,9 @@ export default function Dashboard() {
   ) as DonationRow[] | undefined;
 
   const claimDonation = useMutation(api.functions.claimDonation.claimDonation);
+  const confirmPickup = useMutation(api.functions.confirmPickup.confirmPickup);
+
+  const [confirmPickupId, setConfirmPickupId] = useState<string | null>(null);
 
   const [active, setActive] = useState<Tab>("available");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -279,6 +282,16 @@ export default function Dashboard() {
       setPendingId(null);
     }
   };
+
+  const doConfirmPickup = async (claimId: string) => {
+    try {
+      await confirmPickup({ claim_id: claimId });
+      toast.success("Pickup confirmed!");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to confirm pickup";
+      toast.error(msg);
+    }
+  }
 
   // ---------- donor: compute sections from live data ----------
   const [qDonor, setQDonor] = useState("");
@@ -636,6 +649,11 @@ export default function Dashboard() {
                             {c.donation.description}
                           </div>
                         )}
+                        {c.status === "PENDING" && (
+                        <div className="flex justify-end">
+                          <button className="btn-primary mt-2 w-fit" onClick={() => setConfirmPickupId(c._id)}>Confirm pickup</button>
+                        </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -651,6 +669,19 @@ export default function Dashboard() {
               cancelText="Cancel"
               onConfirm={doClaim}
               onCancel={() => setPendingId(null)}
+            />
+
+            <ConfirmDialog
+              open={!!confirmPickupId}
+              title="Confirm pickup?"
+              description="Please confirm that you have collected this donation."
+              confirmText="Yes, I picked it up"
+              cancelText="Cancel"
+              onConfirm={() => {
+                if (confirmPickupId) doConfirmPickup(confirmPickupId);
+                setConfirmPickupId(null);
+              }}
+              onCancel={() => setConfirmPickupId(null)}
             />
 
             <DetailsDialog

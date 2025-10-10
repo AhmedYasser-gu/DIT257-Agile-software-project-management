@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as crons from "../crons.js";
 import type * as functions_claimDonation from "../functions/claimDonation.js";
+import type * as functions_confirmPickup from "../functions/confirmPickup.js";
 import type * as functions_createDonation from "../functions/createDonation.js";
 import type * as functions_createUser from "../functions/createUser.js";
 import type * as functions_expireDonations from "../functions/expireDonations.js";
@@ -36,6 +37,7 @@ import type * as functions_uploadImage from "../functions/uploadImage.js";
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   "functions/claimDonation": typeof functions_claimDonation;
+  "functions/confirmPickup": typeof functions_confirmPickup;
   "functions/createDonation": typeof functions_createDonation;
   "functions/createUser": typeof functions_createUser;
   "functions/expireDonations": typeof functions_expireDonations;
