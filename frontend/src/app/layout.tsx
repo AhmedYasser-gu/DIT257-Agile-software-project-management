@@ -4,6 +4,7 @@ import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import NavBar from "@/components/NavBar/NavBar";
 import { ToastProvider } from "@/components/Toast/ToastContext";
+import RealtimeToasts from "@/components/Toast/RealtimeToasts";
 import "ol/ol.css"; 
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -39,6 +40,7 @@ export default function RootLayout({
         <div className="min-h-dvh flex flex-col">
           <ConvexClientProvider>
             <ToastProvider>
+              <RealtimeToasts />
               <NavBar />
 
               {/* Main grows to fill remaining height between header & footer */}
