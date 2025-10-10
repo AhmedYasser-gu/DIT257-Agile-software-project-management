@@ -6,6 +6,7 @@ import NavBar from "@/components/NavBar/NavBar";
 import { ToastProvider } from "@/components/Toast/ToastContext";
 import "ol/ol.css"; 
 import AppThemeProvider from "./providers";
+import LanguageProvider from "@/components/LanguageProvider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -39,38 +40,40 @@ export default function RootLayout({
             bg-background text-text dark:bg-zinc-950 dark:text-zinc-100`}
       >
         <AppThemeProvider>
-          {/* Sticky-footer wrapper */}
-          <div className="min-h-dvh flex flex-col">
-            <ConvexClientProvider>
-              <ToastProvider>
-                <NavBar />
+          <LanguageProvider>
+            {/* Sticky-footer wrapper */}
+            <div className="min-h-dvh flex flex-col">
+              <ConvexClientProvider>
+                <ToastProvider>
+                  <NavBar />
 
-                {/* Main grows to fill remaining height between header & footer */}
-                <main
-                  id="main"
-                  role="main"
-                  className="container flex-1 py-6 px-4 sm:px-6"
-                >
-                  {children}
-                </main>
+                  {/* Main grows to fill remaining height between header & footer */}
+                  <main
+                    id="main"
+                    role="main"
+                    className="container flex-1 py-6 px-4 sm:px-6"
+                  >
+                    {children}
+                  </main>
 
-                {/* Footer */}
-                <footer
-                  role="contentinfo"
-                  className=" border-t border-border py-6 text-xs text-subtext bg-card/50
-                             px-4 sm:px-6"
-                >
-                  <div className="container">
-                    © {new Date().getFullYear()} No Leftovers · SDG #2 Zero
-                    Hunger
-                  </div>
-                </footer>
+                  {/* Footer */}
+                  <footer
+                    role="contentinfo"
+                    className=" border-t border-border py-6 text-xs text-subtext bg-card/50
+                              px-4 sm:px-6"
+                  >
+                    <div className="container">
+                      © {new Date().getFullYear()} No Leftovers · SDG #2 Zero
+                      Hunger
+                    </div>
+                  </footer>
 
-                {/* modal root for confirmations */}
-                <div id="modal-root" />
-              </ToastProvider>
-            </ConvexClientProvider>
-          </div>
+                  {/* modal root for confirmations */}
+                  <div id="modal-root" />
+                </ToastProvider>
+              </ConvexClientProvider>
+            </div>
+          </LanguageProvider>
         </AppThemeProvider>
       </body>
     </html>

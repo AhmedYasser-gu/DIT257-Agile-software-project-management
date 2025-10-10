@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 
 export default function NavBar() {
@@ -19,6 +20,8 @@ export default function NavBar() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const current = mounted ? resolvedTheme : "light";
+  const { lang, setLang, t } = useLanguage(); // "en" | "sv"
+
 
   const toggleIcon = (on: boolean) => (
     <span
@@ -34,6 +37,31 @@ export default function NavBar() {
     </span>
   );
 
+const langBadge = (current: "en" | "sv") => (
+  <span
+    aria-hidden
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 28,           // fits Clerk's icon slot
+      height: 16,
+      borderRadius: 9999,
+      background: "var(--c-primary)",
+      color: "#fff",
+      fontSize: 10,
+      fontWeight: 700,
+      lineHeight: 1,
+    }}
+  >
+    {current.toUpperCase()}
+  </span>
+);
+
+
+
+
+
   const status = useQuery(
     api.functions.createUser.getRegistrationStatus,
     userId ? { clerk_id: userId } : "skip"
@@ -41,28 +69,28 @@ export default function NavBar() {
   if (hide) return null;
 
   const linksLoggedOut = [
-    { href: "/", label: "Home", exact: true },
-    { href: "/how-it-works", label: "How it works" },
+    { href: "/", label: t("Home"), exact: true },
+    { href: "/how-it-works", label: t("How it works") },
   ];
   const linksDonor = [
-    { href: "/", label: "Home", exact: true },
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/donate", label: "Post Donation" },
-    { href: "/how-it-works", label: "How it works" },
+    { href: "/", label: t("Home"), exact: true },
+    { href: "/dashboard", label: t("Dashboard") },
+    { href: "/donate", label: t("Post Donation") },
+    { href: "/how-it-works", label: t("How it works") },
   ];
   const linksReceiver = [
-    { href: "/", label: "Home", exact: true },
-    { href: "/explore", label: "Explore" },
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/how-it-works", label: "How it works" },
+    { href: "/", label: t("Home"), exact: true },
+    { href: "/explore", label: t("Explore") },
+    { href: "/dashboard", label: t("Dashboard") },
+    { href: "/how-it-works", label: t("How it works") },
   ];
 
   let links = linksLoggedOut;
   if (userId) {
     if (status === undefined) {
       links = [
-        { href: "/", label: "Home", exact: true },
-        { href: "/dashboard", label: "Dashboard" },
+        { href: "/", label: t("Home"), exact: true },
+        { href: "/dashboard", label: t("Dashboard") },
       ];
     } else if (status?.registered && status?.userType === "donor") {
       links = linksDonor;
@@ -70,8 +98,8 @@ export default function NavBar() {
       links = linksReceiver;
     } else {
       links = [
-        { href: "/", label: "Home", exact: true },
-        { href: "/dashboard", label: "Dashboard" },
+        { href: "/", label: t("Home"), exact: true },
+        { href: "/dashboard", label: t("Dashboard") },
       ];
     }
   }
@@ -98,7 +126,12 @@ export default function NavBar() {
               <UserButton userProfileUrl="/profile" afterSignOutUrl="/">
                 <UserButton.MenuItems>
                   <UserButton.Action
-                    label="Theme"
+                    label={t("Language")}
+                    labelIcon={langBadge(lang)}
+                    onClick={() => setLang(lang === "en" ? "sv" : "en")}
+                  />
+                  <UserButton.Action
+                    label={t("Theme")}
                     labelIcon={toggleIcon(current === "dark")}
                     onClick={() => setTheme(current === "dark" ? "light" : "dark")}
                   />
