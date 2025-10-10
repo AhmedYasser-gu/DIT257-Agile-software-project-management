@@ -3,7 +3,27 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  --c-primary: #4caf50;
+  --c-accent:  #ff9800;
+
+  --c-bg:      #f5f5f5;
+  --c-card:    #ffffff;
+  --c-border:  #e0e0e0;
+
+  --c-text:    #212121;
+  --c-subtext: #757575;
+}
+
+:root.dark {
+  --c-primary: #2e7d32;   /* darker green so white text is crisp */
+  --c-accent:  #ff9800;
+
+  --c-bg:      #0a0a0a;
+  --c-card:    #0f0f10;
+  --c-border:  #27272a;
+
+  --c-text:    #f4f4f5;   /* ≈ zinc-100 */
+  --c-subtext: #a1a1aa;   /* ≈ zinc-400 */
 }
 
 html,
@@ -11,9 +31,11 @@ body {
   height: 100%;
 }
 
-body {
-  @apply bg-background text-text antialiased;
+html, body {
+  @apply bg-background text-text;
 }
+
+
 
 /* helpers */
 .container {
@@ -61,11 +83,15 @@ body {
   @apply btn bg-primary text-white hover:opacity-90;
 }
 .btn-outline {
-  @apply btn border border-border text-text bg-white hover:bg-gray-50;
+  @apply btn border border-border text-text bg-card hover:bg-background
+         focus:ring-zinc-400/30;
 }
 .input {
-  @apply border border-border rounded px-3 py-2 bg-white;
+  @apply w-full rounded border border-border bg-card px-3 py-2 text-sm
+         placeholder:text-subtext outline-none
+         focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-30;
 }
+
 .label {
   @apply text-sm text-subtext;
 }
