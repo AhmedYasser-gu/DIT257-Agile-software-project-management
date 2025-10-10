@@ -4,12 +4,9 @@ import Link from "next/link";
 import Access from "@/components/Access/Access";
 import { SignIn } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function Login() {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
-
   // Close modal with Esc
   useEffect(() => {
     if (!open) return;

@@ -15,7 +15,11 @@
     "incremental": true,
     "baseUrl": ".",
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": ["./src/*"],
+      "convex/server": ["./node_modules/convex/dist/esm-types/server/index.d.ts"],
+      "convex/values": ["./node_modules/convex/dist/esm-types/values/index.d.ts"]
+    }
   },
   "include": [
     "next-env.d.ts",

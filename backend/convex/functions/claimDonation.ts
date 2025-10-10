@@ -33,7 +33,7 @@ export const claimDonation = mutation({
       }
     }
 
-    const amt = amount ?? (1n as unknown as bigint);
+    const amt = amount ?? BigInt(1);
 
     await db.insert("claims", {
       donation_id,

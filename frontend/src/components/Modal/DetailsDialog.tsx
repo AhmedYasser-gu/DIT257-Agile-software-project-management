@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 
 type Donation = {
@@ -56,10 +57,13 @@ export default function DetailsDialog({ open, donation, onClose }: Props) {
             <div className="grid gap-2">
               {donation.imageUrl && (
                 <div className="w-full">
-                  <img
+                  <Image
                     src={donation.imageUrl}
                     alt={donation.title}
+                    width={1200}
+                    height={800}
                     className="w-full h-auto max-h-[50vh] object-contain rounded-md"
+                    unoptimized
                   />
                 </div>
               )}

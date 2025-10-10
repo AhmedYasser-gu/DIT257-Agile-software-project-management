@@ -14,7 +14,7 @@ export default function ReviewsPage() {
     <main className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Business Reviews</h1>
       <ul className="space-y-6">
-        {donors.map((donor) => (
+        {donors.map((donor: (typeof donors)[number]) => (
           <li
             key={donor._id}
             className="p-5 border rounded-lg shadow-sm hover:shadow-md transition"
@@ -39,7 +39,7 @@ export default function ReviewsPage() {
             </div>
 
             {/* Show last 2 reviews preview */}
-            {donor.reviews.slice(0, 2).map((review) => (
+            {donor.reviews.slice(0, 2).map((review: (typeof donor.reviews)[number]) => (
               <div key={review._id} className="mt-3 p-3 border rounded bg-gray-50">
                 <p className="font-medium">⭐ {review.rating}</p>
                 <p>{review.comment}</p>
