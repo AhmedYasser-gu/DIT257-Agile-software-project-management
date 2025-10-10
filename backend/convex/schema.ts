@@ -17,10 +17,12 @@ const donationStatusValidator = v.union(
 enum ClaimedStatus {
   Pending = "PENDING",
   PickedUp = "PICKEDUP",
+  TimesUp = "TIMESUP",
 }
 const claimedStatusValidator = v.union(
   v.literal(ClaimedStatus.Pending),
-  v.literal(ClaimedStatus.PickedUp)
+  v.literal(ClaimedStatus.PickedUp),
+  v.literal(ClaimedStatus.TimesUp)
 );
 
 enum UserType {
@@ -91,6 +93,7 @@ export default defineSchema({
     pickup_window_end: v.string(),
     status: donationStatusValidator,
     category: v.string(),
+    images: v.optional(v.array(v.id("_storage"))),
   }).index("by_donor", ["donor_id"]),
 
   claims: defineTable({
@@ -99,4 +102,17 @@ export default defineSchema({
     amount: v.int64(),
     status: claimedStatusValidator,
   }),
+
+  reviews: defineTable({
+    donor_id: v.id("donors"),
+    reciever_id: v.id("recievers"),
+    rating: v.number(),
+    comment: v.string(),
+  }),
+
+  responses: defineTable({
+    review_id: v.id("reviews"),
+    donor_id: v.id("donors"),
+    response: v.string(),
+  })
 });

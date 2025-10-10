@@ -10,6 +10,7 @@ type AvailableDonation = {
   pickup_window_start: string;
   pickup_window_end: string;
   status: Doc<"donations">["status"];
+  imageUrl?: string | null;
   donor: null | {
     _id: Id<"donors">;
     business_name: string;
@@ -19,8 +20,8 @@ type AvailableDonation = {
   };
 };
 
-export const listAvailableDonations = query(async ({ db }): Promise<AvailableDonation[]> => {
-  const all = await db.query("donations").collect();
+export const listAvailableDonations = query(async ({ db, storage }): Promise<AvailableDonation[]> => {
+  const all: Doc<"donations">[] = await db.query("donations").collect();
   const now = Date.now();
 
   const available = all
@@ -28,18 +29,23 @@ export const listAvailableDonations = query(async ({ db }): Promise<AvailableDon
       if (d.status !== "AVAILABLE") return false;
       const endStr = d.pickup_window_end;
       if (!endStr) return true;
-      const end = new Date((endStr.includes("T") ? endStr : endStr.replace(" ", "T"))).getTime();
+      const normalized = endStr.includes("T") ? endStr : endStr.replace(" ", "T");
+      const end = new Date(normalized).getTime();
       return Number.isFinite(end) ? end >= now : true;
     })
     .sort((a, b) => {
-      const ae = new Date((a.pickup_window_end || "").replace(" ", "T")).getTime() || 0;
-      const be = new Date((b.pickup_window_end || "").replace(" ", "T")).getTime() || 0;
-      return ae - be || a.title.localeCompare(b.title);
+      const aEnd = new Date((a.pickup_window_end || "").replace(" ", "T")).getTime() || 0;
+      const bEnd = new Date((b.pickup_window_end || "").replace(" ", "T")).getTime() || 0;
+      return aEnd - bEnd || a.title.localeCompare(b.title);
     });
 
-  return Promise.all(
+  const withDonor: AvailableDonation[] = await Promise.all(
     available.map(async (d) => {
       const donor = await db.get(d.donor_id as Id<"donors">);
+      const firstImageId = Array.isArray((d as any).images) && (d as any).images.length > 0
+        ? ((d as any).images[0] as any)
+        : null;
+      const imageUrl = firstImageId ? await storage.getUrl(firstImageId) : null;
       return {
         _id: d._id,
         title: d.title,
@@ -49,6 +55,7 @@ export const listAvailableDonations = query(async ({ db }): Promise<AvailableDon
         pickup_window_start: d.pickup_window_start,
         pickup_window_end: d.pickup_window_end,
         status: d.status,
+        imageUrl,
         donor: donor
           ? {
               _id: donor._id,
@@ -61,4 +68,6 @@ export const listAvailableDonations = query(async ({ db }): Promise<AvailableDon
       };
     })
   );
+
+  return withDonor;
 });

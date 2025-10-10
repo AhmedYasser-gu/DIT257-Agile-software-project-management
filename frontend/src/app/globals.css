@@ -42,10 +42,42 @@ html, body {
   @apply mx-auto max-w-5xl px-page;
 }
 .card {
-  @apply bg-card border border-border rounded p-4 shadow-sm;
+  @apply bg-card border border-border rounded p-4 shadow-sm break-words whitespace-normal;
+}
+
+/* Donation card fixed sizing and text clamping */
+.donation-card {
+  @apply break-words whitespace-normal overflow-hidden md:h-44;
+}
+
+.donation-card-content {
+  @apply flex flex-col gap-1 overflow-hidden;
+}
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Force wrap of very long unspaced strings */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .btn {
   @apply inline-flex items-center justify-center px-4 py-2 rounded font-medium;
+}
+.btn-action {
+  @apply h-10 min-w-[136px] whitespace-nowrap;
 }
 .btn-primary {
   @apply btn bg-primary text-white hover:opacity-90;

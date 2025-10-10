@@ -1,5 +1,8 @@
 # 🥗 No Leftovers — Team 3 AGR
 
+[![Frontend CI](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/frontend-ci.yml)
+[![Backend CI](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/DIT257-Agile-Software/DIT257-Agile-software-project-management/actions/workflows/backend-ci.yml)
+
 _Academic project for DIT257 Agile Software Project Management @ University of Gothenburg / Chalmers_
 
 A full-stack food donation platform that connects restaurants and stores with NGOs and individuals to reduce food waste -> aligned with **UN SDG #2: Zero Hunger**.
@@ -152,6 +155,32 @@ Open your browser:
 ✔️ All routes and pages go under `src/app/` (App Router)
 
 ---
+
+## 🧪 Testing & Coverage
+
+We use [**Vitest**](https://vitest.dev) for frontend unit testing.
+
+```bash
+cd frontend
+npm run test
+
+- > Run with coverage report to get %
+npm run test:coverage
+
+
+```
+
+---
+
+We use [**Vitest**](https://vitest.dev) to test Convex backend queries and mutations.
+
+```bash
+cd backend
+npm run test
+
+- > Run with coverage report to get %
+npm run test:coverage
+```
 
 ## ✅ Definition of Done
 

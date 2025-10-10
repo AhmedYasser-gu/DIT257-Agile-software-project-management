@@ -19,3 +19,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Vitest / Coverage
+coverage/

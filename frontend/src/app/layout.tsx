@@ -4,6 +4,7 @@ import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import NavBar from "@/components/NavBar/NavBar";
 import { ToastProvider } from "@/components/Toast/ToastContext";
+import RealtimeToasts from "@/components/Toast/RealtimeToasts";
 import "ol/ol.css"; 
 import AppThemeProvider from "./providers";
 import LanguageProvider from "@/components/LanguageProvider";
@@ -45,7 +46,8 @@ export default function RootLayout({
             <div className="min-h-dvh flex flex-col">
               <ConvexClientProvider>
                 <ToastProvider>
-                  <NavBar />
+                  <RealtimeToasts />
+              <NavBar />
 
                   {/* Main grows to fill remaining height between header & footer */}
                   <main

@@ -7,6 +7,7 @@ import { api } from "@/convexApi";
 import Access from "@/components/Access/Access";
 import Link from "next/link";
 import ConfirmDialog from "@/components/Modal/ConfirmDialog";
+import DetailsDialog from "@/components/Modal/DetailsDialog";
 import { useToast } from "@/components/Toast/ToastContext";
 
 // Charts (donor stats)
@@ -65,16 +66,35 @@ const parseEnd = (s?: string) =>
     ? new Date(s.includes("T") ? s : s.replace(" ", "T")).getTime() || Infinity
     : Infinity;
 
-const makeChartData = (arr: number[]) =>
-  arr.map((val, idx) => ({ day: `D${idx + 1}`, value: val }));
+const makeChartData = (arr: number[], startTs: number) => {
+  const dayMs = 24 * 60 * 60 * 1000;
+  return arr.map((val, idx) => {
+    const date = new Date(startTs + idx * dayMs);
+    const label = date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    return { day: label, value: val };
+  });
+};
 function calcChange(current: number, previous: number) {
-  if (previous === 0) return { percent: 100, trend: "up" as const };
+  if (previous === 0) {
+    // No comparison if no previous data
+    return { percent: null, trend: null };
+  }
   const diff = current - previous;
   const percent = Math.round((Math.abs(diff) / previous) * 100);
   return { percent, trend: diff >= 0 ? ("up" as const) : ("down" as const) };
 }
 
-/* Donor Stat UI widgets*/
+// Helper to format large numbers (1.2K, 3.4M, etc.)
+function formatNumber(value: number): string {
+  if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(1) + "B";
+  if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + "M";
+  if (value >= 1_000) return (value / 1_000).toFixed(1) + "K";
+  return value.toString();
+}
+
 type StatCardProps = {
   title: string;
   current: number;
@@ -84,6 +104,7 @@ type StatCardProps = {
   colorTo: string;
   data: { day: string; value: number }[];
 };
+
 function StatCard({
   title,
   current,
@@ -95,30 +116,40 @@ function StatCard({
 }: StatCardProps) {
   const { percent, trend } = calcChange(current, previous);
   const isUp = trend === "up";
+
   return (
     <div
       className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm flex flex-col`}
     >
       <div>
         <h3 className="text-sm text-gray-700">{title}</h3>
+
         <p className="text-2xl font-bold">
-          {current} {unit}
+          {formatNumber(current)} {unit}
         </p>
+
         <p className="text-xs text-gray-600">
-          Prev: {previous} {unit}
+          Prev: {formatNumber(previous)} {unit}
         </p>
-        <p
-          className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"}`}
-        >
-          {isUp ? "▲" : "▼"} {percent}%
-        </p>
+
+        {percent !== null && (
+          <p
+            className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"
+              }`}
+          >
+            {isUp ? "▲" : "▼"} {percent}%
+          </p>
+        )}
       </div>
+
       <div className="mt-3 h-20">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <XAxis dataKey="day" hide />
             <YAxis hide />
             <Tooltip
+              formatter={(value: number) => [`${value}`, "Value"]}
+              labelFormatter={(label: string) => `Date: ${label}`}
               cursor={{ stroke: "#ccc", strokeDasharray: "5 5" }}
               contentStyle={{ fontSize: "12px" }}
             />
@@ -135,7 +166,6 @@ function StatCard({
     </div>
   );
 }
-
 // ---------- main page ----------
 export default function Dashboard() {
   const { userId } = useAuth();
@@ -162,9 +192,14 @@ export default function Dashboard() {
   ) as DonationRow[] | undefined;
 
   const claimDonation = useMutation(api.functions.claimDonation.claimDonation);
+  const confirmPickup = useMutation(api.functions.confirmPickup.confirmPickup);
+
+  const [confirmPickupId, setConfirmPickupId] = useState<string | null>(null);
 
   const [active, setActive] = useState<Tab>("available");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsDonation, setDetailsDonation] = useState<DonationRow | null>(null);
 
   const isReceiver = !!status?.registered && status?.userType === "receiver";
   const isDonor = !!status?.registered && status?.userType === "donor";
@@ -248,6 +283,16 @@ export default function Dashboard() {
     }
   };
 
+  const doConfirmPickup = async (claimId: string) => {
+    try {
+      await confirmPickup({ claim_id: claimId });
+      toast.success("Pickup confirmed!");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to confirm pickup";
+      toast.error(msg);
+    }
+  }
+
   // ---------- donor: compute sections from live data ----------
   const [qDonor, setQDonor] = useState("");
   const [catDonor, setCatDonor] = useState<string>("all");
@@ -282,11 +327,15 @@ export default function Dashboard() {
     return { OPEN, CLAIMED, EXPIRED };
   }, [myDonations, qDonor, catDonor, sortDonor]);
 
-  // donor stats (last 7 vs previous 7 days; based on _creationTime)
+
+  // Donor stats period (7, 14, or 30 days)
+  const [statsDays, setStatsDays] = useState(7);
+
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
-  const startCurr = now - 7 * day;
-  const startPrev = now - 14 * day;
+  const startCurr = now - statsDays * day;
+  const startPrev = now - 2 * statsDays * day;
+
   const donations = myDonations ?? [];
 
   const inRange = (t: number | undefined, s: number, e: number) =>
@@ -327,30 +376,97 @@ export default function Dashboard() {
     for (let i = 0; i < n; i++) arr[i % 7]++;
     return arr;
   };
+  // ---------- donor stats (last 7 vs previous 7 days; based on _creationTime) ----------
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  function startOfDay(ts: number) {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  // Build an array of last 2 × statsDays (each midnight timestamp)
+  const days: number[] = [];
+  for (let i = 2 * statsDays - 1; i >= 0; i--) {
+    days.push(startOfDay(now - i * dayMs));
+  }
+  function bucketCounts(
+    donations: DonationRow[],
+    filterFn: (d: DonationRow) => boolean,
+    valueFn: (d: DonationRow) => number,
+    timeFn: (d: DonationRow) => number | undefined = (d) => d._creationTime
+  ): number[] {
+    const counts = Array(days.length).fill(0);
+
+    donations.forEach((d) => {
+      if (!filterFn(d)) return;
+      const ts = timeFn(d);
+      if (!ts) return;
+
+      const dayIdx = days.findIndex(
+        (dayStart, i) =>
+          ts >= dayStart &&
+          (i === days.length - 1 ? ts < now : ts < days[i + 1])
+      );
+      if (dayIdx >= 0) {
+        counts[dayIdx] += valueFn(d);
+      }
+    });
+
+    return counts;
+  }
+  const createdDaily = bucketCounts(
+    donations,
+    () => true,
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+  const claimedDaily = bucketCounts(
+    donations,
+    (d) => d.status === "AVAILABLE",
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+  const expiredDaily = bucketCounts(
+    donations,
+    (d) => d.status === "EXPIRED" && !!d.pickup_window_end,
+    () => 1,
+    (d) => new Date(d.pickup_window_end!).getTime()
+  );
+
+  const quantityCreatedDaily = bucketCounts(
+    donations,
+    () => true,
+    (d) => toNum(d.quantity),
+    (d) => new Date(d.pickup_window_end!).getTime(),
+  );
+  const quantityClaimedDaily = bucketCounts(
+    donations,
+    (d) => d.status === "AVAILABLE",
+    (d) => toNum(d.quantity),
+    (d) => new Date(d.pickup_window_end!).getTime(),
+  );
+  const quantityExpiredDaily = bucketCounts(
+    donations,
+    (d) => d.status === "EXPIRED" && !!d.pickup_window_end,
+    (d) => toNum(d.quantity),
+    (d) => new Date(d.pickup_window_end!).getTime(),
+  );
+
+  function sliceStats(series: number[]) {
+    const prev = series.slice(0, statsDays).reduce((a, b) => a + b, 0);
+    const curr = series.slice(statsDays).reduce((a, b) => a + b, 0);
+    return { current: curr, previous: prev, daily: series.slice(statsDays) };
+  }
 
   const statsSeries = {
-    created: {
-      current: createdCurr,
-      previous: createdPrev,
-      daily: spreadSeries(createdCurr),
-    },
-    claimed: {
-      current: claimedCurr,
-      previous: claimedPrev,
-      daily: spreadSeries(claimedCurr),
-    },
-    expired: {
-      current: expiredCurr,
-      previous: expiredPrev,
-      daily: spreadSeries(expiredCurr),
-    },
-    quantity: {
-      current: qtyCurr,
-      previous: qtyPrev,
-      daily: spreadSeries(qtyCurr),
-    },
+    created: sliceStats(createdDaily),
+    claimed: sliceStats(claimedDaily),
+    expired: sliceStats(expiredDaily),
+    quantityCreated: sliceStats(quantityCreatedDaily),
+    quantityClaimed: sliceStats(quantityClaimedDaily),
+    quantityExpired: sliceStats(quantityExpiredDaily),
   };
-
   // donor accordions
   const [showOpen, setShowOpen] = useState(true);
   const [showClaimed, setShowClaimed] = useState(false);
@@ -365,7 +481,7 @@ export default function Dashboard() {
         {isReceiver && (
           <>
             {/* Tabs */}
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 className={`btn-outline ${active === "available" ? "!bg-[#4CAF50] !text-white border-transparent" : ""}`}
@@ -385,37 +501,37 @@ export default function Dashboard() {
             {/* Available + controls */}
             {active === "available" && (
               <div className="grid gap-3">
-                <div className="flex gap-2 flex-wrap items-end justify-between">
-                  <div className="text-subtext text-sm">
-                    Browse and claim food that’s still good.
-                  </div>
-                  <div className="flex gap-2">
+                <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+                  <div className="text-subtext text-sm">Browse and claim food that’s still good.</div>
+                  <div className="grid gap-2 sm:flex sm:items-center sm:gap-2">
                     <input
-                      className="input"
+                      className="input w-full sm:w-52"
                       placeholder="Search…"
                       value={qRecv}
                       onChange={(e) => setQRecv(e.target.value)}
                     />
-                    <select
-                      className="input"
-                      value={catRecv}
-                      onChange={(e) => setCatRecv(e.target.value)}
-                    >
-                      {catsRecv.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="input"
-                      value={sortRecv}
-                      onChange={(e) => setSortRecv(e.target.value as SortKey)}
-                    >
-                      <option value="soonest">Soonest pickup</option>
-                      <option value="newest">Newest</option>
-                      <option value="title">Title</option>
-                    </select>
+                    <div className="grid gap-2 sm:flex sm:gap-2">
+                      <select
+                        className="input w-full sm:w-40"
+                        value={catRecv}
+                        onChange={(e) => setCatRecv(e.target.value)}
+                      >
+                        {catsRecv.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="input w-full sm:w-40"
+                        value={sortRecv}
+                        onChange={(e) => setSortRecv(e.target.value as SortKey)}
+                      >
+                        <option value="soonest">Soonest pickup</option>
+                        <option value="newest">Newest</option>
+                        <option value="title">Title</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -432,32 +548,46 @@ export default function Dashboard() {
                     {availableFiltered.map((d) => (
                       <li
                         key={d._id}
-                        className="card flex items-start justify-between gap-4"
+                        className="card donation-card flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
                       >
-                        <div className="grid gap-1">
-                          <div className="font-medium">{d.title}</div>
-                          <div className="text-sm text-subtext">
-                            {d.category} · Qty: {fmtQty(d.quantity)} ·{" "}
-                            {d.donor?.business_name ?? "Unknown donor"}
-                          </div>
-                          <div className="text-xs text-subtext">
-                            Pickup: {d.pickup_window_start} →{" "}
-                            {d.pickup_window_end}
-                          </div>
-                          {d.description && (
-                            <div className="text-sm">{d.description}</div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:flex-1">
+                          {((d as any).imageUrl) && (
+                            <img
+                              src={(d as any).imageUrl}
+                              alt={d.title}
+                              className="h-32 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                            />
                           )}
+                          <div className="grid gap-1 overflow-hidden">
+                            <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                            <div className="text-sm text-subtext line-clamp-2 break-anywhere">
+                              {d.category} · Qty: {fmtQty(d.quantity)} ·{" "}
+                              {d.donor?.business_name ?? "Unknown donor"}
+                            </div>
+                            <div className="text-xs text-subtext line-clamp-2 break-anywhere">
+                              Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                            </div>
+                            {d.description && (
+                              <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
                           <button
-                            className="btn-primary"
+                            className="btn-primary btn-action"
                             onClick={() => setPendingId(d._id)}
                           >
                             Claim
                           </button>
-                          <Link className="btn-outline" href="/explore">
+                          <button
+                            className="btn-outline btn-action"
+                            onClick={() => {
+                              setDetailsDonation(d);
+                              setDetailsOpen(true);
+                            }}
+                          >
                             Explore Details
-                          </Link>
+                          </button>
                         </div>
                       </li>
                     ))}
@@ -469,15 +599,15 @@ export default function Dashboard() {
             {/* My claims + controls */}
             {active === "myClaims" && (
               <div className="grid gap-3">
-                <div className="flex gap-2 flex-wrap items-end justify-end">
+                <div className="grid gap-2 sm:flex sm:justify-end sm:gap-2">
                   <input
-                    className="input"
+                    className="input w-full sm:w-56"
                     placeholder="Search my claims…"
                     value={qClaims}
                     onChange={(e) => setQClaims(e.target.value)}
                   />
                   <select
-                    className="input"
+                    className="input w-full sm:w-40"
                     value={sortClaims}
                     onChange={(e) =>
                       setSortClaims(e.target.value as ClaimsSortKey)
@@ -497,13 +627,13 @@ export default function Dashboard() {
                 {myClaims && myClaimsFiltered.length > 0 && (
                   <ul className="grid gap-3">
                     {myClaimsFiltered.map((c) => (
-                      <li key={c._id} className="card grid gap-1">
-                        <div className="flex items-center justify-between">
+                      <li key={c._id} className="card grid gap-2">
+                        <div className="grid gap-2 sm:flex sm:items-start sm:justify-between">
                           <div className="font-medium">
                             {c.donation?.title ?? "Donation"} —{" "}
                             {c.donor?.business_name ?? "Unknown donor"}
                           </div>
-                          <div className="text-sm">
+                          <div className="text-sm sm:text-right">
                             Claim status:{" "}
                             <span className="text-subtext">
                               {claimLabel(c)}
@@ -518,6 +648,11 @@ export default function Dashboard() {
                           <div className="text-sm">
                             {c.donation.description}
                           </div>
+                        )}
+                        {c.status === "PENDING" && (
+                        <div className="flex justify-end">
+                          <button className="btn-primary mt-2 w-fit" onClick={() => setConfirmPickupId(c._id)}>Confirm pickup</button>
+                        </div>
                         )}
                       </li>
                     ))}
@@ -535,6 +670,25 @@ export default function Dashboard() {
               onConfirm={doClaim}
               onCancel={() => setPendingId(null)}
             />
+
+            <ConfirmDialog
+              open={!!confirmPickupId}
+              title="Confirm pickup?"
+              description="Please confirm that you have collected this donation."
+              confirmText="Yes, I picked it up"
+              cancelText="Cancel"
+              onConfirm={() => {
+                if (confirmPickupId) doConfirmPickup(confirmPickupId);
+                setConfirmPickupId(null);
+              }}
+              onCancel={() => setConfirmPickupId(null)}
+            />
+
+            <DetailsDialog
+              open={detailsOpen}
+              donation={detailsDonation}
+              onClose={() => setDetailsOpen(false)}
+            />
           </>
         )}
 
@@ -542,22 +696,22 @@ export default function Dashboard() {
         {isDonor && (
           <div className="max-w-5xl px-0 py-2 space-y-12">
             {/* Donor search/filter/sort controls */}
-            <div className="flex items-end justify-between gap-3 flex-wrap">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-[200px] sm:flex-1">
                 <h3 className="text-xl font-semibold">My posts</h3>
                 <p className="text-subtext text-sm">
                   Filter by category or search by title/description.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-none sm:gap-2">
                 <input
-                  className="input"
+                  className="input w-full sm:max-w-xs"
                   placeholder="Search my posts…"
                   value={qDonor}
                   onChange={(e) => setQDonor(e.target.value)}
                 />
                 <select
-                  className="input"
+                  className="input w-full sm:w-auto"
                   value={catDonor}
                   onChange={(e) => setCatDonor(e.target.value)}
                 >
@@ -568,7 +722,7 @@ export default function Dashboard() {
                   ))}
                 </select>
                 <select
-                  className="input"
+                  className="input w-full sm:w-auto"
                   value={sortDonor}
                   onChange={(e) => setSortDonor(e.target.value as DonorSortKey)}
                 >
@@ -599,20 +753,31 @@ export default function Dashboard() {
                   {donorLists.OPEN.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold">{d.title}</h5>
-                      <p className="text-sm text-gray-600">
-                        Qty: {fmtQty(d.quantity)} · Category: {d.category}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Pickup: {d.pickup_window_start} → {d.pickup_window_end}
-                      </p>
-                      {d.description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {d.description}
-                        </p>
-                      )}
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        {((d as any).imageUrl) && (
+                          <img
+                            src={(d as any).imageUrl}
+                            alt={d.title}
+                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                          />
+                        )}
+                        <div className="donation-card-content min-w-0">
+                          <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                          <p className="text-sm text-gray-600 line-clamp-1">
+                            Qty: {fmtQty(d.quantity)} · Category: {d.category}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1">
+                            Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                          </p>
+                          {d.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {d.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {donorLists.OPEN.length === 0 && (
@@ -644,20 +809,31 @@ export default function Dashboard() {
                   {donorLists.CLAIMED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold">{d.title}</h5>
-                      <p className="text-sm text-gray-600">
-                        Qty: {fmtQty(d.quantity)} · Category: {d.category}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Pickup: {d.pickup_window_start} → {d.pickup_window_end}
-                      </p>
-                      {d.description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {d.description}
-                        </p>
-                      )}
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        {((d as any).imageUrl) && (
+                          <img
+                            src={(d as any).imageUrl}
+                            alt={d.title}
+                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                          />
+                        )}
+                        <div className="donation-card-content min-w-0">
+                          <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                          <p className="text-sm text-gray-600 line-clamp-1">
+                            Qty: {fmtQty(d.quantity)} · Category: {d.category}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1">
+                            Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                          </p>
+                          {d.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {d.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {donorLists.CLAIMED.length === 0 && (
@@ -689,20 +865,31 @@ export default function Dashboard() {
                   {donorLists.EXPIRED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
-                      <h5 className="text-lg font-semibold">{d.title}</h5>
-                      <p className="text-sm text-gray-600">
-                        Qty: {fmtQty(d.quantity)} · Category: {d.category}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Pickup: {d.pickup_window_start} → {d.pickup_window_end}
-                      </p>
-                      {d.description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {d.description}
-                        </p>
-                      )}
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        {((d as any).imageUrl) && (
+                          <img
+                            src={(d as any).imageUrl}
+                            alt={d.title}
+                            className="h-24 w-full rounded-md object-cover sm:h-24 sm:w-24 sm:shrink-0"
+                          />
+                        )}
+                        <div className="donation-card-content min-w-0">
+                          <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
+                          <p className="text-sm text-gray-600 line-clamp-1">
+                            Qty: {fmtQty(d.quantity)} · Category: {d.category}
+                          </p>
+                          <p className="text-sm text-gray-500 line-clamp-1">
+                            Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                          </p>
+                          {d.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {d.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {donorLists.EXPIRED.length === 0 && (
@@ -719,15 +906,29 @@ export default function Dashboard() {
               <h3 className="text-2xl font-semibold border-b pb-2">
                 Statistics
               </h3>
-              <div className="text-sm text-gray-600">
-                Showing last 7 days vs previous 7 days (auto).
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <span>Showing stats for:</span>
+                {[7, 14, 30].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`px-3 py-1 rounded-md border text-sm transition ${statsDays === d
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                      }`}
+                    onClick={() => setStatsDays(d)}
+                  >
+                    Last {d} days
+                  </button>
+                ))}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-1">
+              {/* First row: listing counts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-1">
                 <StatCard
                   title="Listings created"
                   current={statsSeries.created.current}
                   previous={statsSeries.created.previous}
-                  data={makeChartData(statsSeries.created.daily)}
+                  data={makeChartData(statsSeries.created.daily, now - statsDays * 24 * 60 * 60 * 1000)}
                   colorFrom="from-blue-50"
                   colorTo="to-blue-100"
                 />
@@ -735,7 +936,7 @@ export default function Dashboard() {
                   title="Listings claimed"
                   current={statsSeries.claimed.current}
                   previous={statsSeries.claimed.previous}
-                  data={makeChartData(statsSeries.claimed.daily)}
+                  data={makeChartData(statsSeries.claimed.daily, now - statsDays * 24 * 60 * 60 * 1000)}
                   colorFrom="from-green-50"
                   colorTo="to-green-100"
                 />
@@ -743,18 +944,40 @@ export default function Dashboard() {
                   title="Listings expired"
                   current={statsSeries.expired.current}
                   previous={statsSeries.expired.previous}
-                  data={makeChartData(statsSeries.expired.daily)}
-                  colorFrom="from-red-50"
-                  colorTo="to-red-100"
+                  data={makeChartData(statsSeries.expired.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-rose-50"
+                  colorTo="to-rose-100"
+                />
+              </div>
+
+              {/* Second row: food quantity stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                <StatCard
+                  title="Food quantity created"
+                  current={statsSeries.quantityCreated.current}
+                  previous={statsSeries.quantityCreated.previous}
+                  unit="portions"
+                  data={makeChartData(statsSeries.quantityCreated.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-amber-50"
+                  colorTo="to-amber-100"
                 />
                 <StatCard
-                  title="Food quantity"
-                  current={statsSeries.quantity.current}
-                  previous={statsSeries.quantity.previous}
+                  title="Food quantity claimed"
+                  current={statsSeries.quantityClaimed.current}
+                  previous={statsSeries.quantityClaimed.previous}
                   unit="portions"
-                  data={makeChartData(statsSeries.quantity.daily)}
-                  colorFrom="from-purple-50"
-                  colorTo="to-purple-100"
+                  data={makeChartData(statsSeries.quantityClaimed.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-emerald-50"
+                  colorTo="to-emerald-100"
+                />
+                <StatCard
+                  title="Food quantity expired"
+                  current={statsSeries.quantityExpired.current}
+                  previous={statsSeries.quantityExpired.previous}
+                  unit="portions"
+                  data={makeChartData(statsSeries.quantityExpired.daily, now - statsDays * 24 * 60 * 60 * 1000)}
+                  colorFrom="from-indigo-50"
+                  colorTo="to-indigo-100"
                 />
               </div>
             </section>

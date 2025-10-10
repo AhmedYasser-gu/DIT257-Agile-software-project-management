@@ -1,24 +1,27 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import Input from "@/components/Input/Input";
 import Access from "@/components/Access/Access";
 import { api } from "@/convexApi";
-import { FOOD_CATEGORIES, FoodCategory } from "@/constants/categories";
+import { PRESET_FOOD_CATEGORIES, FoodCategory } from "@/constants/categories";
 import { useToast } from "@/components/Toast/ToastContext";
+import CategorySelect from "@/components/Input/CategorySelect";
+import { processImageToWebP } from "@/helpers/image";
 
 type DonorOption = { _id: string; business_name: string };
 
 type CreateDonationInput = {
   description: string;
   donor_id: string;
-  pickup_window_start: string; // ISO "YYYY-MM-DDTHH:mm"
-  pickup_window_end: string;   // ISO "YYYY-MM-DDTHH:mm"
+  pickup_window_start: string;
+  pickup_window_end: string;
   quantity: number;
   title: string;
   status: "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED";
   category: string;
+  images?: string[];
 };
 
 function todayISODate(): string {
@@ -28,18 +31,14 @@ function todayISODate(): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-
 function nowISOTimeHM(): string {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 }
-
-function combineISO(date: string, time: string): string {
-  // returns "YYYY-MM-DDTHH:mm"
-  return `${date}T${time}`;
-}
+// returns "YYYY-MM-DDTHH:mm"
+const combineISO = (date: string, time: string) => `${date}T${time}`;
 
 export default function Donate() {
   const { userId } = useAuth();
@@ -59,10 +58,17 @@ export default function Donate() {
   const [donor_id, setDonorId] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<FoodCategory>("Bakery");
+
+  // default that exists in our presets
+  const [category, setCategory] = useState<FoodCategory>("Prepared Meals");
+
+  // image upload state
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // NEW: split date/time (24h) inputs with hints
+  // split date/time inputs
   const [startDate, setStartDate] = useState(todayISODate());
   const [startTime, setStartTime] = useState(nowISOTimeHM());
   const [endDate, setEndDate] = useState(todayISODate());
@@ -72,12 +78,12 @@ export default function Donate() {
   const pickupEndISO = useMemo(() => combineISO(endDate, endTime), [endDate, endTime]);
 
   const createDonation = useMutation(api.functions.createDonation.createDonation);
+  const getUploadUrl = useAction(api.functions.uploadImage.getUploadUrl);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const now = new Date();
 
-    // validations
     if (!donor_id || !title || !description || !quantity || !startDate || !startTime || !endDate || !endTime) {
       setErrorMessage("Please fill out all required fields.");
       return;
@@ -85,7 +91,6 @@ export default function Donate() {
 
     const start = new Date(pickupStartISO);
     const end = new Date(pickupEndISO);
-
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       setErrorMessage("Please enter a valid date and time (24h format).");
       return;
@@ -104,6 +109,36 @@ export default function Donate() {
     }
     setErrorMessage("");
 
+    // Process and upload images first (optional)
+    let imageIds: string[] = [];
+    if (files.length > 0) {
+      setUploading(true);
+      try {
+        for (const f of files) {
+          const processed = await processImageToWebP(f);
+          // Get signed upload URL
+          const { url } = await getUploadUrl({ contentType: "image/webp" });
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "image/webp" },
+            body: processed.blob,
+          });
+          if (!res.ok) throw new Error("Upload failed");
+          const json = await res.json();
+          const storageId = json.storageId ?? json.id;
+          if (!storageId) throw new Error("No storageId returned");
+          imageIds.push(storageId);
+        }
+      } catch (e) {
+        setUploading(false);
+        const msg = e instanceof Error ? e.message : "Image upload failed";
+        setErrorMessage(msg);
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
+
     const payload: CreateDonationInput = {
       description,
       donor_id,
@@ -112,19 +147,21 @@ export default function Donate() {
       quantity,
       title,
       status: "AVAILABLE",
-      category,
+      category, // still a plain string
+      images: imageIds,
     };
 
     try {
       await createDonation(payload as unknown as Record<string, unknown>);
       toast.success("Donation posted!");
 
-      // reset to sensible defaults
+      // reset fields
       setDonorId("");
       setTitle("");
       setDescription("");
       setQuantity(0);
-      setCategory("Bakery");
+      setCategory("Prepared Meals");
+      setFiles([]);
       const today = todayISODate();
       const nowHM = nowISOTimeHM();
       setStartDate(today);
@@ -173,13 +210,32 @@ export default function Donate() {
 
           {/* Description */}
           <label className="grid gap-1">
-            <span className="label">Description</span>
+            <span className="label">Description (also add pickup instructions)</span>
             <textarea
               className="input min-h-[96px]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
+
+          {/* Images */}
+          <div className="grid gap-1">
+            <label className="label">Images (optional)</label>
+            <input
+              className="input"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const list = e.target.files;
+                setFiles(list ? Array.from(list) : []);
+              }}
+            />
+            {files.length > 0 && (
+              <div className="text-xs text-subtext">{files.length} file(s) selected</div>
+            )}
+            {uploading && <div className="text-xs">Uploading images…</div>}
+          </div>
 
           {/* Quantity */}
           <Input
@@ -192,22 +248,14 @@ export default function Donate() {
             min={1}
           />
 
-          {/* Category */}
-          <div className="grid gap-1">
-            <label className="label">Select Category</label>
-            <select
-              className="input"
-              value={category}
-              onChange={(e) => setCategory(e.target.value as FoodCategory)}
-              required
-            >
-              {FOOD_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Category (creatable) */}
+          <CategorySelect
+            label="Category"
+            value={category}
+            onChange={(v) => setCategory(v)}
+            presets={PRESET_FOOD_CATEGORIES}
+            helper="Pick a preset or type your own (e.g., 'Gluten‑Free', 'Halal')."
+          />
 
           {/* Pickup window */}
           <div className="grid gap-2">
@@ -273,7 +321,9 @@ export default function Donate() {
 
           {errorMessage && <p className="text-red-600">{errorMessage}</p>}
 
-          <button type="submit" className="btn-primary w-fit">Post Donation</button>
+          <button type="submit" className="btn-primary w-fit" disabled={uploading}>
+            {uploading ? "Posting…" : "Post Donation"}
+          </button>
         </form>
       </section>
     </Access>

@@ -6,14 +6,15 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convexApi";
 import { useRouter } from "next/navigation";
 import Access from "@/components/Access/Access";
-import MapPickerOpenLayers from "@/components/Map/MapViewOpenLayers";
-
+import MapViewOpenLayers from "@/components/Map/MapViewOpenLayers";
+import AddressSearch from "@/components/Input/AddressSearch";
+import { reverseGeocode } from "@/helpers/geocode";
 
 type DonorOption = { _id: string; name: string };
 
 export default function RegisterDonater() {
   const router = useRouter();
-  const { userId } = useAuth();
+  const { userId, isLoaded } = useAuth();
   const { user } = useUser();
   const registerDonor = useMutation(api.functions.createUser.registerDonor);
   const donors = useQuery(api.functions.createUser.listDonors, {}) as
@@ -27,7 +28,9 @@ export default function RegisterDonater() {
   const [businessName, setBusinessName] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
   const [businessPhone, setBusinessPhone] = useState("");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
 
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
   const NEW_BUSINESS_VALUE = "__new_business__";
@@ -35,33 +38,32 @@ export default function RegisterDonater() {
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
 
-  // prevent accidental navigation away mid‑form
+  // protect against accidental leave (but allow while submitting or after completion)
   useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (!completed) {
+    const before = (e: BeforeUnloadEvent) => {
+      if (!completed && !submitting) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
-    window.addEventListener("beforeunload", handler);
-    const handlePop = () => {
-      if (!completed) {
+    window.addEventListener("beforeunload", before);
+    const pop = () => {
+      if (!completed && !submitting) {
         history.pushState(null, "", location.href);
       }
     };
     history.pushState(null, "", location.href);
-    window.addEventListener("popstate", handlePop);
+    window.addEventListener("popstate", pop);
     return () => {
-      window.removeEventListener("beforeunload", handler);
-      window.removeEventListener("popstate", handlePop);
+      window.removeEventListener("beforeunload", before);
+      window.removeEventListener("popstate", pop);
     };
-  }, [completed]);
+  }, [completed, submitting]);
 
   const allValid = useMemo(() => {
     const hasUser = firstName.trim() && lastName.trim() && phone.trim();
     if (!hasUser) return false;
     if (selectedDonorId && selectedDonorId !== NEW_BUSINESS_VALUE) return true;
-    // location is optional; we only require business basics when creating a new org
     return (
       businessName.trim() &&
       businessEmail.trim() &&
@@ -82,7 +84,7 @@ export default function RegisterDonater() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!userId) {
+    if (!isLoaded || !userId) {
       setError("You must be signed in to register.");
       return;
     }
@@ -96,7 +98,7 @@ export default function RegisterDonater() {
           first_name: firstName,
           last_name: lastName,
           phone,
-          donors_id: selectedDonorId as unknown as string, // Convex will accept the id string
+          donors_id: selectedDonorId as unknown as string,
         });
       } else {
         await registerDonor({
@@ -113,7 +115,7 @@ export default function RegisterDonater() {
         });
       }
       setCompleted(true);
-      router.replace("/dashboard");
+      window.location.assign("/dashboard");
     } catch {
       setError("Registration failed. Please try again.");
     } finally {
@@ -121,23 +123,39 @@ export default function RegisterDonater() {
     }
   };
 
+  // seed form from Clerk
   useEffect(() => {
-    if (user) {
-      setFirstName(user.firstName ?? "");
-      setLastName(user.lastName ?? "");
-      setBusinessEmail(user.primaryEmailAddress?.emailAddress ?? "");
-      setPhone(user.primaryPhoneNumber?.phoneNumber ?? "");
-    }
+    if (!user) return;
+    setFirstName(user.firstName ?? "");
+    setLastName(user.lastName ?? "");
+    setBusinessEmail(user.primaryEmailAddress?.emailAddress ?? "");
+    setPhone(user.primaryPhoneNumber?.phoneNumber ?? "");
   }, [user]);
+
+  // map -> address (reverse geocode every valid pick)
+  const onPick = async (pos: { lat: number; lng: number } | null) => {
+    setCoords(pos);
+    if (!pos) return;
+    try {
+      const disp = await reverseGeocode(pos.lat, pos.lng);
+      if (disp) setAddress(disp);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <Access requireAuth requireUnregistered redirectIfRegisteredTo="/dashboard">
-      <section className="grid gap-4 max-w-md">
+      <section className="grid gap-4 max-w-3xl w-full">
         <h2 className="text-2xl font-semibold">Register as Donor</h2>
+
         <div className="card grid gap-4 p-6">
-          <p className="text-subtext">Create an account to start donating food.</p>
+          <p className="text-subtext">
+            Create an account to start donating food.
+          </p>
+
           <form className="grid gap-3" onSubmit={onSubmit}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="label">First name</span>
                 <input
@@ -200,7 +218,7 @@ export default function RegisterDonater() {
                   />
                 </label>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="grid gap-1">
                     <span className="label">Business email</span>
                     <input
@@ -222,55 +240,29 @@ export default function RegisterDonater() {
                   </label>
                 </div>
 
-                <label className="grid gap-1">
-                  <span className="label">Business address</span>
-                  <input
-                    className="input"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    required
-                  />
-                </label>
+                {/* Searchable address + live map */}
+                <AddressSearch
+                  label="Business address"
+                  value={address}
+                  onChangeText={(v) => setAddress(v)}
+                  onSelectPlace={(c) => {
+                    setAddress(c.label);
+                    setCoords({ lat: c.lat, lng: c.lng });
+                  }}
+                />
 
-                {/*  map picker  */}
                 <div className="grid gap-1">
                   <div className="label">Business location (optional)</div>
                   <div className="text-xs text-subtext mb-2">
-                    Click on the map to set your pickup location (we’ll show this
-                    on the Explore map).
+                    Search or click the map—both stay in sync.
                   </div>
-                  <MapPickerOpenLayers value={coords ?? undefined} onChange={setCoords} />
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <label className="grid gap-1">
-                      <span className="label">Lat</span>
-                      <input
-                        className="input"
-                        inputMode="decimal"
-                        value={coords?.lat ?? ""}
-                        onChange={(e) =>
-                          setCoords((c) => ({
-                            lat: Number(e.target.value) || 0,
-                            lng: c?.lng ?? 0,
-                          }))
-                        }
-                        placeholder="e.g. 57.7089"
-                      />
-                    </label>
-                    <label className="grid gap-1">
-                      <span className="label">Lng</span>
-                      <input
-                        className="input"
-                        inputMode="decimal"
-                        value={coords?.lng ?? ""}
-                        onChange={(e) =>
-                          setCoords((c) => ({
-                            lat: c?.lat ?? 0,
-                            lng: Number(e.target.value) || 0,
-                          }))
-                        }
-                        placeholder="e.g. 11.9746"
-                      />
-                    </label>
+                  <div className="h-60 w-full overflow-hidden rounded-md">
+                    <MapViewOpenLayers
+                      value={coords ?? undefined}
+                      onChange={onPick}
+                      height={240}
+                      legendMode="pickerOnly"
+                    />
                   </div>
                 </div>
               </>
@@ -278,13 +270,25 @@ export default function RegisterDonater() {
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={!allValid || submitting}
-            >
-              {submitting ? "Registering..." : "Register"}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={!isLoaded || !userId || !allValid || submitting}
+              >
+                {submitting ? "Registering..." : "Register"}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  if (window.history.length > 1) router.back();
+                  else router.push("/login/register");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       </section>
