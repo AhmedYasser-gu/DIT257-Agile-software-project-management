@@ -11,6 +11,7 @@ type ClaimRow = {
   _creationTime?: number;
   donation?: { title?: string; pickup_window_start?: string } | null;
   donor?: { business_name?: string } | null;
+  status?: string | null;
 };
 
 export default function Home() {
@@ -143,6 +144,14 @@ export default function Home() {
                     <div className="text-sm text-subtext truncate">{c.donor?.business_name ?? "Donor"}</div>
                   </div>
                   {(() => {
+                    // Show "Item picked up" if status is PICKEDUP
+                    if (c.status === "PICKEDUP") {
+                      return (
+                        <div className="shrink-0 text-sm font-medium text-green-700">
+                          Item picked up
+                        </div>
+                      );
+                    }
                     const startTs = parseDate(c.donation?.pickup_window_start);
                     const hasStart = !Number.isNaN(startTs);
                     // Before pickup window opens

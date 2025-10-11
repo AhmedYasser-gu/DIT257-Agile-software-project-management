@@ -31,8 +31,12 @@ export const handleTimedOutClaims = internalMutation(async ({ db }) => {
 
   // Get all claims with status "PENDING"
   const claims = await db.query("claims").collect();
-
+  
+ 
   for (const claim of claims) {
+    if (claim.status === "PICKEDUP") {
+      return; // Stop the entire function
+    }
     if (claim.status !== "PENDING") continue;
 
     // Get the associated donation
