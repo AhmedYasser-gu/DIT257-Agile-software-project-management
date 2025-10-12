@@ -34,9 +34,31 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
+  // Returns the UTC midnight timestamp (ms) for a given time.
+  const getUTCMidnight = (ts: number) => {
+    const d = new Date(ts);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  };
+
+  // Today's UTC midnight
+  const todayUTCMidnight = getUTCMidnight(nowTs);
+  const tomorrowUTCMidnight = todayUTCMidnight + 24 * 60 * 60 * 1000;
+
+  // Only show claims where the creation time falls within today in UTC
   const claimsSorted = useMemo(() => {
-    return (myClaims ?? []).slice().sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
-  }, [myClaims]);
+    if (!myClaims) return [];
+    return myClaims
+      .filter((c) => {
+        if (!c._creationTime) return false;
+        // claim created between today's UTC midnight and next UTC midnight
+        return (
+          c._creationTime >= todayUTCMidnight &&
+          c._creationTime < tomorrowUTCMidnight
+        );
+      })
+      .slice()
+      .sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+  }, [myClaims, todayUTCMidnight, tomorrowUTCMidnight]);
 
   const formatHMS = (ms: number) => {
     const clamped = Math.max(0, ms);
@@ -133,7 +155,7 @@ export default function Home() {
             <div className="mt-3 text-subtext">Loading your claims…</div>
           )}
           {myClaims && claimsSorted.length === 0 && (
-            <div className="mt-3 text-subtext">You have no claims yet.</div>
+            <div className="mt-3 text-subtext">You have no claims yet today.</div>
           )}
           {myClaims && claimsSorted.length > 0 && (
             <ul className="mt-3 grid gap-2">
