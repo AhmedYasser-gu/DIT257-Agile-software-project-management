@@ -21,7 +21,7 @@ import {
 } from "recharts";
 
 type DonationStatus = "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
-type ClaimStatus = "PENDING" | "PICKEDUP" | string;
+type ClaimStatus = "PENDING" | "PICKEDUP" | "TIMESUP" |string;
 
 type DonorMini = { _id: string; business_name: string; address?: string };
 type DonationRow = {
@@ -56,6 +56,7 @@ const toNum = (q: number | bigint | undefined) =>
 const fmtQty = (q: number | bigint) => String(toNum(q));
 
 const claimLabel = (c: ClaimRow) => {
+  if (c?.status === "TIMESUP") return "TIME UP";
   if (c?.donation?.status === "CLAIMED") return "CLAIMED";
   if (c?.status === "PICKEDUP") return "PICKED UP";
   return "PENDING";
@@ -649,7 +650,7 @@ export default function Dashboard() {
                             {c.donation.description}
                           </div>
                         )}
-                        {c.status === "PENDING" && (
+                        {c.status === "PENDING" &&(
                         <div className="flex justify-end">
                           <button className="btn-primary mt-2 w-fit" onClick={() => setConfirmPickupId(c._id)}>Confirm pickup</button>
                         </div>
