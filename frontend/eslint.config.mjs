@@ -13,12 +13,11 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     ignores: [
-      "backend/**",
-      "frontend/node_modules/**",
-      "frontend/.next/**",
-      "frontend/out/**",
-      "frontend/build/**",
-      "frontend/next-env.d.ts",
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
     ],
   },
   // Relax strict TS rules for test files only
