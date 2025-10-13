@@ -1,25 +1,24 @@
+import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { createRequire } from "module";
+import { FlatCompat } from "@eslint/eslintrc";
 
-const require = createRequire(new URL("./frontend/package.json", import.meta.url));
-const { FlatCompat } = require("@eslint/eslintrc");
-
-const frontendDir = fileURLToPath(new URL("./frontend", import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const compat = new FlatCompat({
-  baseDirectory: frontendDir,
+  baseDirectory: __dirname,
 });
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     ignores: [
-      "../backend/**",
-      "node_modules/**",
-      ".next/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
+      "backend/**",
+      "frontend/node_modules/**",
+      "frontend/.next/**",
+      "frontend/out/**",
+      "frontend/build/**",
+      "frontend/next-env.d.ts",
     ],
   },
   // Relax strict TS rules for test files only
