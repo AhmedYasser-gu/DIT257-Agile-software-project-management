@@ -72,7 +72,8 @@ export default function Home() {
   };
 
   const getEffectiveStart = (claim: ClaimRow) => {
-    const claimTs = typeof claim._creationTime === "number" ? claim._creationTime : NaN;
+    const claimTs =
+      typeof claim._creationTime === "number" ? claim._creationTime : NaN;
     const pickupStartTs = parseDate(claim.donation?.pickup_window_start);
     if (!Number.isNaN(pickupStartTs)) {
       if (Number.isNaN(claimTs)) return pickupStartTs;
@@ -138,9 +139,11 @@ export default function Home() {
               <Link className="btn-primary" href="/dashboard">
                 Go to dashboard
               </Link>
-              <Link className="btn-outline" href="/explore">
-                Explore
-              </Link>
+              {status?.registered && status.userType === "receiver" && (
+                <Link className="btn-outline" href="/explore">
+                  Explore
+                </Link>
+              )}
             </div>
           </SignedIn>
         </div>
@@ -150,21 +153,32 @@ export default function Home() {
         <div className="card">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Your claimed items</h2>
-            <Link className="text-info underline text-sm" href="/dashboard">Manage in dashboard</Link>
+            <Link className="text-info underline text-sm" href="/dashboard">
+              Manage in dashboard
+            </Link>
           </div>
           {myClaims === undefined && (
             <div className="mt-3 text-subtext">Loading your claims…</div>
           )}
           {myClaims && claimsSorted.length === 0 && (
-            <div className="mt-3 text-subtext">You have no claims yet today.</div>
+            <div className="mt-3 text-subtext">
+              You have no claims yet today.
+            </div>
           )}
           {myClaims && claimsSorted.length > 0 && (
             <ul className="mt-3 grid gap-2">
               {claimsSorted.map((c) => (
-                <li key={c._id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
+                <li
+                  key={c._id}
+                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3"
+                >
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{c.donation?.title ?? "Donation"}</div>
-                    <div className="text-sm text-subtext truncate">{c.donor?.business_name ?? "Donor"}</div>
+                    <div className="font-medium truncate">
+                      {c.donation?.title ?? "Donation"}
+                    </div>
+                    <div className="text-sm text-subtext truncate">
+                      {c.donor?.business_name ?? "Donor"}
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
                     {(() => {
@@ -176,7 +190,9 @@ export default function Home() {
                           </div>
                         );
                       }
-                      const startTs = parseDate(c.donation?.pickup_window_start);
+                      const startTs = parseDate(
+                        c.donation?.pickup_window_start
+                      );
                       const hasStart = !Number.isNaN(startTs);
                       // Before pickup window opens
                       if (hasStart && startTs > nowTs) {
@@ -203,13 +219,19 @@ export default function Home() {
                       }
                       return (
                         <div className="shrink-0 flex flex-col items-end">
-                          <div className={`text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}>
-                            {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
+                          <div
+                            className={`text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}
+                          >
+                            {expired
+                              ? "Time up"
+                              : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
                           </div>
                           {c.status === "PENDING" && (
                             <ConfirmPickupButton
                               claimId={c._id}
-                              pickupWindowStart={c.donation?.pickup_window_start}
+                              pickupWindowStart={
+                                c.donation?.pickup_window_start
+                              }
                             />
                           )}
                         </div>

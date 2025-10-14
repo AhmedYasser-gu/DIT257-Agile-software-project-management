@@ -8,7 +8,8 @@ export default function ReviewsPage() {
   const donors = useQuery(api.functions.reviews.listDonorsWithReviews);
 
   if (donors === undefined) return <p className="p-6">Loading businesses...</p>;
-  if (donors.length === 0) return <p className="p-6">No businesses available.</p>;
+  if (donors.length === 0)
+    return <p className="p-6">No businesses available.</p>;
 
   return (
     <main className="max-w-4xl mx-auto p-6">
@@ -20,16 +21,26 @@ export default function ReviewsPage() {
             className="p-5 border rounded-lg shadow-sm hover:shadow-md transition"
           >
             <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-semibold">{donor.business_name}</h2>
-                <p className="text-gray-600">{donor.address}</p>
+              <div className="flex flex-col max-w-full overflow-hidden">
+                <h2 className="text-xl font-semibold truncate">
+                  {donor.business_name}
+                </h2>
+                <p
+                  className="text-gray-600 truncate max-w-full overflow-hidden text-ellipsis"
+                  title={donor.address}
+                >
+                  {donor.address}
+                </p>
               </div>
               <div className="text-right">
                 {donor.avgRating !== null ? (
                   <>
-                    <p className="font-bold text-lg">⭐ {donor.avgRating.toFixed(1)}</p>
+                    <p className="font-bold text-lg">
+                      ⭐ {donor.avgRating.toFixed(1)}
+                    </p>
                     <p className="text-sm text-gray-500">
-                      ({donor.reviewCount} review{donor.reviewCount !== 1 && "s"})
+                      ({donor.reviewCount} review
+                      {donor.reviewCount !== 1 && "s"})
                     </p>
                   </>
                 ) : (
@@ -39,18 +50,25 @@ export default function ReviewsPage() {
             </div>
 
             {/* Show last 2 reviews preview */}
-            {donor.reviews.slice(0, 2).map((review: (typeof donor.reviews)[number]) => (
-              <div key={review._id} className="mt-3 p-3 border rounded bg-gray-50">
-                <p className="font-medium">⭐ {review.rating}</p>
-                <p>{review.comment}</p>
-                {review.response && (
-                  <div className="mt-2 p-2 border-l-4 border-blue-500 bg-white">
-                    <p className="text-sm font-semibold">{donor.business_name} replied:</p>
-                    <p>{review.response.response}</p>
-                  </div>
-                )}
-              </div>
-            ))}
+            {donor.reviews
+              .slice(0, 2)
+              .map((review: (typeof donor.reviews)[number]) => (
+                <div
+                  key={review._id}
+                  className="mt-3 p-3 border rounded bg-gray-50"
+                >
+                  <p className="font-medium">⭐ {review.rating}</p>
+                  <p>{review.comment}</p>
+                  {review.response && (
+                    <div className="mt-2 p-2 border-l-4 border-blue-500 bg-white">
+                      <p className="text-sm font-semibold">
+                        {donor.business_name} replied:
+                      </p>
+                      <p>{review.response.response}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
 
             <Link
               href={`/reviews/${donor._id}`}

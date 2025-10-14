@@ -10,7 +10,9 @@ import StatusBadge from "@/components/Badge/StatusBadge";
 import { fmt, minutesRemaining } from "@/helpers/time";
 import Link from "next/link";
 import Image from "next/image";
-import MapViewOpenLayers, { MapPoint } from "@/components/Map/MapViewOpenLayers";
+import MapViewOpenLayers, {
+  MapPoint,
+} from "@/components/Map/MapViewOpenLayers";
 
 type SortKey = "soonest" | "newest" | "title";
 
@@ -35,7 +37,9 @@ type AvailableDonation = {
 
 const toNum = (x: number | bigint) => (typeof x === "bigint" ? Number(x) : x);
 
-type AvailableDonationWithDistance = AvailableDonation & { distanceKm?: number | null };
+type AvailableDonationWithDistance = AvailableDonation & {
+  distanceKm?: number | null;
+};
 
 const distanceFilters = [
   { value: "any", label: "All distances" },
@@ -50,7 +54,10 @@ const EARTH_RADIUS_KM = 6371;
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
-function distanceKmBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+function distanceKmBetween(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+) {
   const dLat = toRadians(b.lat - a.lat);
   const dLng = toRadians(b.lng - a.lng);
   const lat1 = toRadians(a.lat);
@@ -59,7 +66,8 @@ function distanceKmBetween(a: { lat: number; lng: number }, b: { lat: number; ln
   const sinDLat = Math.sin(dLat / 2);
   const sinDLng = Math.sin(dLng / 2);
 
-  const c = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  const c =
+    sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
   const distance = 2 * Math.atan2(Math.sqrt(c), Math.sqrt(1 - c));
   return EARTH_RADIUS_KM * distance;
 }
@@ -76,9 +84,9 @@ function formatDistance(km: number) {
 }
 
 export default function Explore() {
-  const data = useQuery(api.functions.listAvailableDonations.listAvailableDonations) as
-    | AvailableDonation[]
-    | undefined;
+  const data = useQuery(
+    api.functions.listAvailableDonations.listAvailableDonations
+  ) as AvailableDonation[] | undefined;
 
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
@@ -86,16 +94,17 @@ export default function Explore() {
   const [distanceFilter, setDistanceFilter] = useState<string>("any");
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
 
-
   const donorIds = useMemo(
-    () => Array.from(new Set((data ?? []).map((d) => d.donor?._id).filter(Boolean))),
+    () =>
+      Array.from(
+        new Set((data ?? []).map((d) => d.donor?._id).filter(Boolean))
+      ),
     [data]
   );
 
   const donorReviews = useQuery(api.functions.reviews.getReviewsForDonors, {
     donorIds: donorIds as string[],
   }) as Record<string, { rating: number }[]> | undefined;
-
 
   const getAvgRating = (donorId: string) => {
     const reviews = donorReviews?.[donorId] ?? [];
@@ -125,8 +134,16 @@ export default function Explore() {
       setMe((prev) => prev ?? null);
     };
 
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
-    const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, options);
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      handleError,
+      options
+    );
+    const watchId = navigator.geolocation.watchPosition(
+      handleSuccess,
+      handleError,
+      options
+    );
 
     return () => {
       cancelled = true;
@@ -143,7 +160,9 @@ export default function Explore() {
   }, [data]);
 
   const list = useMemo<AvailableDonationWithDistance[]>(() => {
-    let L: AvailableDonationWithDistance[] = (data ?? []).map((d) => ({ ...d }));
+    let L: AvailableDonationWithDistance[] = (data ?? []).map((d) => ({
+      ...d,
+    }));
     if (me) {
       L = L.map((d) => {
         const donorLat = d.donor?.lat;
@@ -197,7 +216,9 @@ export default function Explore() {
   const points: MapPoint[] = useMemo(
     () =>
       (list ?? [])
-        .filter((d) => Number.isFinite(d.donor?.lat) && Number.isFinite(d.donor?.lng))
+        .filter(
+          (d) => Number.isFinite(d.donor?.lat) && Number.isFinite(d.donor?.lng)
+        )
         .map((d) => ({
           id: d._id,
           lat: d.donor!.lat as number,
@@ -205,7 +226,11 @@ export default function Explore() {
           donorName: d.donor?.business_name,
           title: d.title,
           items: d.description
-            ? d.description.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6)
+            ? d.description
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .slice(0, 6)
             : undefined,
           status: d.status,
           detailUrl: "/dashboard",
@@ -220,17 +245,24 @@ export default function Explore() {
         <div className="grid gap-4 sm:flex sm:flex-wrap sm:items-start sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold">Nearby donations</h2>
-            <p className="text-subtext text-sm">Browse and claim food that’s still good!</p>
+            <p className="text-subtext text-sm">
+              Browse and claim food that’s still good!
+            </p>
           </div>
           <div className="grid w-full gap-2 sm:flex sm:w-auto sm:items-center sm:gap-2">
             <input
-              className="input w-full sm:w-52"
+              className="input w-full sm:min-w-[220px] sm:flex-1 md:min-w-[300px] lg:min-w-[400px] xl:min-w-[480px] max-w-full"
               placeholder="Search (title, description, donor)…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
+
             <div className="grid gap-2 sm:flex sm:gap-2">
-              <select className="input w-full sm:w-40" value={cat} onChange={(e) => setCat(e.target.value)}>
+              <select
+                className="input w-full sm:w-40"
+                value={cat}
+                onChange={(e) => setCat(e.target.value)}
+              >
                 {cats.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -248,7 +280,11 @@ export default function Explore() {
                   </option>
                 ))}
               </select>
-              <select className="input w-full sm:w-40" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+              <select
+                className="input w-full sm:w-40"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+              >
                 <option value="soonest">Soonest pickup</option>
                 <option value="newest">Newest</option>
                 <option value="title">Title</option>
@@ -309,21 +345,37 @@ export default function Explore() {
                             />
                           </div>
                         )}
-                        <div className="grid gap-1 overflow-hidden">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 overflow-hidden">
-                            <div className="font-medium line-clamp-2 break-anywhere">{d.title}</div>
+                        <div className="grid gap-0.5 overflow-hidden">
+                          <div className="flex flex-wrap items-center gap-1 overflow-hidden min-w-0">
+                            <div
+                              className="font-medium truncate max-w-full break-words"
+                              title={d.title}
+                            >
+                              {d.title}
+                            </div>
+
                             <CategoryPill label={d.category} />
                             <StatusBadge status={d.status} />
                           </div>
                           <div className="text-sm text-subtext line-clamp-2 break-anywhere">
-                            Qty: {String(toNum(d.quantity))} · {d.donor?.business_name ?? "Unknown donor"}
+                            Qty: {String(toNum(d.quantity))} ·{" "}
+                            {d.donor?.business_name ?? "Unknown donor"}
                           </div>
                           <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                            Pickup: {fmt(d.pickup_window_start)} → {fmt(d.pickup_window_end)}
-                            {Number.isFinite(mins) && mins > 0 && <span> · {mins} min left</span>}
-                            {distanceLabel && <span> · {distanceLabel} away</span>}
+                            Pickup: {fmt(d.pickup_window_start)} →{" "}
+                            {fmt(d.pickup_window_end)}
+                            {Number.isFinite(mins) && mins > 0 && (
+                              <span> · {mins} min left</span>
+                            )}
+                            {distanceLabel && (
+                              <span> · {distanceLabel} away</span>
+                            )}
                           </div>
-                          {d.description && <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>}
+                          {d.description && (
+                            <div className="text-sm line-clamp-2 break-anywhere">
+                              {d.description}
+                            </div>
+                          )}
 
                           {d.donor?._id && donorReviews && (
                             <div className="text-sm line-clamp-2">
