@@ -5,6 +5,7 @@ import { SignedOut, SignedIn, useAuth } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convexApi";
+import ConfirmPickupButton from "@/components/ConfirmPickupButton/ConfirmPickupButton";
 
 type ClaimRow = {
   _id: string;
@@ -206,12 +207,10 @@ export default function Home() {
                             {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
                           </div>
                           {c.status === "PENDING" && (
-                            <button
-                              className="btn-primary mt-2 w-fit"
-                              onClick={() => setConfirmPickupId(c._id)}
-                            >
-                              Confirm pickup
-                            </button>
+                            <ConfirmPickupButton
+                              claimId={c._id}
+                              pickupWindowStart={c.donation?.pickup_window_start}
+                            />
                           )}
                         </div>
                       );
