@@ -160,47 +160,63 @@ export default function Home() {
           {myClaims && claimsSorted.length > 0 && (
             <ul className="mt-3 grid gap-2">
               {claimsSorted.map((c) => (
-                <li key={c._id} className="flex items-center justify-between rounded-md border p-3">
+                <li key={c._id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{c.donation?.title ?? "Donation"}</div>
                     <div className="text-sm text-subtext truncate">{c.donor?.business_name ?? "Donor"}</div>
                   </div>
-                  {(() => {
-                    // Show "Item picked up" if status is PICKEDUP
-                    if (c.status === "PICKEDUP") {
+                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                    {(() => {
+                      // Show "Item picked up" if status is PICKEDUP
+                      if (c.status === "PICKEDUP") {
+                        return (
+                          <div className="shrink-0 text-sm font-medium text-green-700">
+                            Item picked up
+                          </div>
+                        );
+                      }
+                      const startTs = parseDate(c.donation?.pickup_window_start);
+                      const hasStart = !Number.isNaN(startTs);
+                      // Before pickup window opens
+                      if (hasStart && startTs > nowTs) {
+                        const untilStart = startTs - nowTs;
+                        return (
+                          <div className="shrink-0 flex flex-col items-end">
+                            <div className="text-sm font-medium text-amber-700">
+                              Items pickup starts in {fmtDuration(untilStart)}
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Pickup window open: countdown from effective start
+                      const startEffective = getEffectiveStart(c);
+                      const expired = isExpired(c);
+                      if (Number.isNaN(startEffective)) {
+                        return (
+                          <div className="shrink-0 flex flex-col items-end">
+                            <div className="text-sm font-medium text-subtext">
+                              Pickup time unavailable
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
-                        <div className="shrink-0 text-sm font-medium text-green-700">
-                          Item picked up
+                        <div className="shrink-0 flex flex-col items-end">
+                          <div className={`text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}>
+                            {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
+                          </div>
+                          {c.status === "PENDING" && (
+                            <button
+                              className="btn-primary mt-2 w-fit"
+                              onClick={() => setConfirmPickupId(c._id)}
+                            >
+                              Confirm pickup
+                            </button>
+                          )}
                         </div>
                       );
-                    }
-                    const startTs = parseDate(c.donation?.pickup_window_start);
-                    const hasStart = !Number.isNaN(startTs);
-                    // Before pickup window opens
-                    if (hasStart && startTs > nowTs) {
-                      const untilStart = startTs - nowTs;
-                      return (
-                        <div className="shrink-0 text-sm font-medium text-amber-700">
-                          Items pickup starts in {fmtDuration(untilStart)}
-                        </div>
-                      );
-                    }
-                    // Pickup window open: countdown from effective start
-                    const startEffective = getEffectiveStart(c);
-                    const expired = isExpired(c);
-                    if (Number.isNaN(startEffective)) {
-                      return (
-                        <div className="shrink-0 text-sm font-medium text-subtext">
-                          Pickup time unavailable
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className={`shrink-0 text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}>
-                        {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
-                      </div>
-                    );
-                  })()}
+                    })()}
+                  </div>
                 </li>
               ))}
             </ul>
