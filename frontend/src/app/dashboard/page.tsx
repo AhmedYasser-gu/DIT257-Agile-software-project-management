@@ -10,6 +10,7 @@ import Image from "next/image";
 import ConfirmDialog from "@/components/Modal/ConfirmDialog";
 import DetailsDialog from "@/components/Modal/DetailsDialog";
 import { useToast } from "@/components/Toast/ToastContext";
+import ConfirmPickupButton from "@/components/ConfirmPickupButton/ConfirmPickupButton";
 
 // Charts (donor stats)
 import {
@@ -22,7 +23,7 @@ import {
 } from "recharts";
 
 type DonationStatus = "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
-type ClaimStatus = "PENDING" | "PICKEDUP" | string;
+type ClaimStatus = "PENDING" | "PICKEDUP" | "TIMESUP" |string;
 
 type DonorMini = { _id: string; business_name: string; address?: string };
 type DonationRow = {
@@ -58,6 +59,7 @@ const toNum = (q: number | bigint | undefined) =>
 const fmtQty = (q: number | bigint) => String(toNum(q));
 
 const claimLabel = (c: ClaimRow) => {
+  if (c?.status === "TIMESUP") return "TIME UP";
   if (c?.donation?.status === "CLAIMED") return "CLAIMED";
   if (c?.status === "PICKEDUP") return "PICKED UP";
   return "PENDING";
@@ -194,9 +196,6 @@ export default function Dashboard() {
   ) as DonationRow[] | undefined;
 
   const claimDonation = useMutation(api.functions.claimDonation.claimDonation);
-  const confirmPickup = useMutation(api.functions.confirmPickup.confirmPickup);
-
-  const [confirmPickupId, setConfirmPickupId] = useState<string | null>(null);
 
   const [active, setActive] = useState<Tab>("available");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -284,16 +283,6 @@ export default function Dashboard() {
       setPendingId(null);
     }
   };
-
-  const doConfirmPickup = async (claimId: string) => {
-    try {
-      await confirmPickup({ claim_id: claimId });
-      toast.success("Pickup confirmed!");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to confirm pickup";
-      toast.error(msg);
-    }
-  }
 
   // ---------- donor: compute sections from live data ----------
   const [qDonor, setQDonor] = useState("");
@@ -655,9 +644,12 @@ export default function Dashboard() {
                             {c.donation.description}
                           </div>
                         )}
-                        {c.status === "PENDING" && (
+                        {c.status === "PENDING" &&(
                         <div className="flex justify-end">
-                          <button className="btn-primary mt-2 w-fit" onClick={() => setConfirmPickupId(c._id)}>Confirm pickup</button>
+                            <ConfirmPickupButton
+                              claimId={c._id}
+                              pickupWindowStart={c.donation?.pickup_window_start}
+                            />
                         </div>
                         )}
                       </li>
@@ -675,19 +667,6 @@ export default function Dashboard() {
               cancelText="Cancel"
               onConfirm={doClaim}
               onCancel={() => setPendingId(null)}
-            />
-
-            <ConfirmDialog
-              open={!!confirmPickupId}
-              title="Confirm pickup?"
-              description="Please confirm that you have collected this donation."
-              confirmText="Yes, I picked it up"
-              cancelText="Cancel"
-              onConfirm={() => {
-                if (confirmPickupId) doConfirmPickup(confirmPickupId);
-                setConfirmPickupId(null);
-              }}
-              onCancel={() => setConfirmPickupId(null)}
             />
 
             <DetailsDialog

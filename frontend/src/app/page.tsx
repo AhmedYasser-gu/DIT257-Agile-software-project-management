@@ -5,12 +5,14 @@ import { SignedOut, SignedIn, useAuth } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convexApi";
+import ConfirmPickupButton from "@/components/ConfirmPickupButton/ConfirmPickupButton";
 
 type ClaimRow = {
   _id: string;
   _creationTime?: number;
   donation?: { title?: string; pickup_window_start?: string } | null;
   donor?: { business_name?: string } | null;
+  status?: string | null;
 };
 
 export default function Home() {
@@ -33,9 +35,31 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
+  // Returns the UTC midnight timestamp (ms) for a given time.
+  const getUTCMidnight = (ts: number) => {
+    const d = new Date(ts);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  };
+
+  // Today's UTC midnight
+  const todayUTCMidnight = getUTCMidnight(nowTs);
+  const tomorrowUTCMidnight = todayUTCMidnight + 24 * 60 * 60 * 1000;
+
+  // Only show claims where the creation time falls within today in UTC
   const claimsSorted = useMemo(() => {
-    return (myClaims ?? []).slice().sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
-  }, [myClaims]);
+    if (!myClaims) return [];
+    return myClaims
+      .filter((c) => {
+        if (!c._creationTime) return false;
+        // claim created between today's UTC midnight and next UTC midnight
+        return (
+          c._creationTime >= todayUTCMidnight &&
+          c._creationTime < tomorrowUTCMidnight
+        );
+      })
+      .slice()
+      .sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+  }, [myClaims, todayUTCMidnight, tomorrowUTCMidnight]);
 
   const formatHMS = (ms: number) => {
     const clamped = Math.max(0, ms);
@@ -132,44 +156,66 @@ export default function Home() {
             <div className="mt-3 text-subtext">Loading your claims…</div>
           )}
           {myClaims && claimsSorted.length === 0 && (
-            <div className="mt-3 text-subtext">You have no claims yet.</div>
+            <div className="mt-3 text-subtext">You have no claims yet today.</div>
           )}
           {myClaims && claimsSorted.length > 0 && (
             <ul className="mt-3 grid gap-2">
               {claimsSorted.map((c) => (
-                <li key={c._id} className="flex items-center justify-between rounded-md border p-3">
+                <li key={c._id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{c.donation?.title ?? "Donation"}</div>
                     <div className="text-sm text-subtext truncate">{c.donor?.business_name ?? "Donor"}</div>
                   </div>
-                  {(() => {
-                    const startTs = parseDate(c.donation?.pickup_window_start);
-                    const hasStart = !Number.isNaN(startTs);
-                    // Before pickup window opens
-                    if (hasStart && startTs > nowTs) {
-                      const untilStart = startTs - nowTs;
+                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                    {(() => {
+                      // Show "Item picked up" if status is PICKEDUP
+                      if (c.status === "PICKEDUP") {
+                        return (
+                          <div className="shrink-0 text-sm font-medium text-green-700">
+                            Item picked up
+                          </div>
+                        );
+                      }
+                      const startTs = parseDate(c.donation?.pickup_window_start);
+                      const hasStart = !Number.isNaN(startTs);
+                      // Before pickup window opens
+                      if (hasStart && startTs > nowTs) {
+                        const untilStart = startTs - nowTs;
+                        return (
+                          <div className="shrink-0 flex flex-col items-end">
+                            <div className="text-sm font-medium text-amber-700">
+                              Items pickup starts in {fmtDuration(untilStart)}
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Pickup window open: countdown from effective start
+                      const startEffective = getEffectiveStart(c);
+                      const expired = isExpired(c);
+                      if (Number.isNaN(startEffective)) {
+                        return (
+                          <div className="shrink-0 flex flex-col items-end">
+                            <div className="text-sm font-medium text-subtext">
+                              Pickup time unavailable
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
-                        <div className="shrink-0 text-sm font-medium text-amber-700">
-                          Items pickup starts in {fmtDuration(untilStart)}
+                        <div className="shrink-0 flex flex-col items-end">
+                          <div className={`text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}>
+                            {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
+                          </div>
+                          {c.status === "PENDING" && (
+                            <ConfirmPickupButton
+                              claimId={c._id}
+                              pickupWindowStart={c.donation?.pickup_window_start}
+                            />
+                          )}
                         </div>
                       );
-                    }
-                    // Pickup window open: countdown from effective start
-                    const startEffective = getEffectiveStart(c);
-                    const expired = isExpired(c);
-                    if (Number.isNaN(startEffective)) {
-                      return (
-                        <div className="shrink-0 text-sm font-medium text-subtext">
-                          Pickup time unavailable
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className={`shrink-0 text-sm font-medium ${expired ? "text-red-600" : "text-green-700"}`}>
-                        {expired ? "Time up" : `Pickup within ${fmtDuration(60 * 60 * 1000 - Math.max(0, nowTs - startEffective))}`}
-                      </div>
-                    );
-                  })()}
+                    })()}
+                  </div>
                 </li>
               ))}
             </ul>
