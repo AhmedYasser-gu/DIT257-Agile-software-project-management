@@ -637,8 +637,8 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="text-xs text-subtext">
-                          Pickup: {c.donation?.pickup_window_start} →{" "}
-                          {c.donation?.pickup_window_end}
+                          Pickup: {c.donation?.pickup_window_start ? isoToDate(c.donation?.pickup_window_start) : "N/A"} →{" "}
+                          {c.donation?.pickup_window_end ? isoToDate(c.donation?.pickup_window_end) : "N/A"}
                         </div>
                         {c.donation?.description && (
                           <div className="text-sm">

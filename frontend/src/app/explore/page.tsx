@@ -13,6 +13,8 @@ import Image from "next/image";
 import MapViewOpenLayers, {
   MapPoint,
 } from "@/components/Map/MapViewOpenLayers";
+import isoToDate from "@/components/isoToDate/isoToDate";
+import formatTimeRemaining from "@/components/timeAdapter/minToYearDay";
 
 type SortKey = "soonest" | "newest" | "title";
 
@@ -362,10 +364,10 @@ export default function Explore() {
                             {d.donor?.business_name ?? "Unknown donor"}
                           </div>
                           <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                            Pickup: {fmt(d.pickup_window_start)} →{" "}
-                            {fmt(d.pickup_window_end)}
+                            Pickup: {fmt(d.pickup_window_start ? isoToDate(d.pickup_window_start): "N/A")} →{" "}
+                            {fmt(d.pickup_window_end? isoToDate(d.pickup_window_end): "N/A")}
                             {Number.isFinite(mins) && mins > 0 && (
-                              <span> · {mins} min left</span>
+                              <span> · {formatTimeRemaining(mins)}</span>
                             )}
                             {distanceLabel && (
                               <span> · {distanceLabel} away</span>
