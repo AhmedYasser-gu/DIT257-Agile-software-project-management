@@ -314,7 +314,7 @@ export default function Home() {
               key={item.name}
               className="card h-full border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50 dark:border-emerald-900/70 dark:from-zinc-950 dark:via-zinc-950 dark:to-emerald-950"
             >
-              <p className="text-base italic text-text">"{item.quote}"</p>
+              <p className="text-base italic text-text">&ldquo;{item.quote}&rdquo;</p>
               <p className="mt-3 text-sm font-semibold text-subtext">- {item.name}</p>
             </article>
           ))}
