@@ -35,7 +35,7 @@ export const handleTimedOutClaims = internalMutation(async ({ db }) => {
  
   for (const claim of claims) {
     if (claim.status === "PICKEDUP") {
-      return; // Stop the entire function
+      continue;
     }
     if (claim.status !== "PENDING") continue;
 
