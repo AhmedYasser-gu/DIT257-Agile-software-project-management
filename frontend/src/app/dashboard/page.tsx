@@ -32,14 +32,6 @@ const chartTooltipStyle = {
   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.2)",
 };
 
-const tooltipStyle: TooltipProps<number, string>["contentStyle"] = {
-  backgroundColor: "var(--c-card)",
-  color: "var(--c-text)",
-  borderRadius: "0.5rem",
-  border: `1px solid var(--c-border)`,
-  fontSize: "12px",
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.2)",
-};
 
 type DonationStatus = "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
 type ClaimStatus = "PENDING" | "PICKEDUP" | "TIMESUP" |string;
@@ -354,36 +346,6 @@ export default function Dashboard() {
 
   const inRange = (t: number | undefined, s: number, e: number) =>
     typeof t === "number" && t >= s && t < e;
-
-  const createdPrev = donations.filter((d) =>
-    inRange(d._creationTime, startPrev, startCurr)
-  ).length;
-  const createdCurr = donations.filter((d) =>
-    inRange(d._creationTime, startCurr, now)
-  ).length;
-
-  const claimedPrev = donations.filter(
-    (d) =>
-      d.status === "CLAIMED" && inRange(d._creationTime, startPrev, startCurr)
-  ).length;
-  const claimedCurr = donations.filter(
-    (d) => d.status === "CLAIMED" && inRange(d._creationTime, startCurr, now)
-  ).length;
-
-  const expiredPrev = donations.filter(
-    (d) =>
-      d.status === "EXPIRED" && inRange(d._creationTime, startPrev, startCurr)
-  ).length;
-  const expiredCurr = donations.filter(
-    (d) => d.status === "EXPIRED" && inRange(d._creationTime, startCurr, now)
-  ).length;
-
-  const qtyPrev = donations
-    .filter((d) => inRange(d._creationTime, startPrev, startCurr))
-    .reduce((s, d) => s + toNum(d.quantity), 0);
-  const qtyCurr = donations
-    .filter((d) => inRange(d._creationTime, startCurr, now))
-    .reduce((s, d) => s + toNum(d.quantity), 0);
 
   const spreadSeries = (n: number): number[] => {
     const arr = Array(7).fill(0);
