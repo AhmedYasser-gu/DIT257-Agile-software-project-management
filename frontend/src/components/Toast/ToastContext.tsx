@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 const color = (t: ToastKind) =>
-  t === "success" ? "bg-[#2ECC71]" : t === "error" ? "bg-[#E74C3C]" : "bg-[#3498DB]";
+  t === "success" ? "bg-primary" : t === "error" ? "bg-rose-500" : "bg-sky-500";
 
 function Toaster({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
   return (
@@ -108,21 +108,21 @@ function ToastItem({ t, onDismiss }: { t: Toast; onDismiss: (id: string) => void
   }, [t.id, duration, onDismiss]);
 
   return (
-    <div className="card shadow-lg border border-[#E0E0E0] p-3 relative overflow-hidden bg-white pointer-events-auto">
+    <div className="card shadow-lg border border-border p-3 relative overflow-hidden bg-card pointer-events-auto">
       <div
         className={`absolute left-0 top-0 h-1 ${color(t.type)}`}
         style={{ width: animate ? "0%" : "100%", transition: `width ${duration}ms linear` }}
       />
       <button
         aria-label="Close"
-        className="absolute top-2 right-2 text-[#6B7280] hover:text-[#111827] text-sm"
+        className="absolute top-2 right-2 text-subtext hover:text-text text-sm"
         onClick={() => onDismiss(t.id)}
       >
         ×
       </button>
       <div className="pt-2">
-        <div className="font-medium text-[#212121]">{t.title}</div>
-        {t.message && <div className="text-xs mt-0.5 text-[#212121]/70">{t.message}</div>}
+        <div className="font-medium text-text">{t.title}</div>
+        {t.message && <div className="text-xs mt-0.5 text-subtext">{t.message}</div>}
       </div>
     </div>
   );

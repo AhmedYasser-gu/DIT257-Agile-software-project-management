@@ -73,12 +73,16 @@ export default function RealtimeToasts() {
     for (const d of myDonations) {
       const prev = prevDonationsRef.current.get(d._id);
 
-      // Expiry transition: not previously EXPIRED -> EXPIRED now
-      if (d.status === "EXPIRED" && prev && prev.status !== "EXPIRED") {
-        toast.info("A donation expired", d.title ? `\"${d.title}\" expired.` : undefined);
+      if (prev && d.status !== prev.status) {
+        if (d.status === "CLAIMED") {
+          toast.info("Donation claimed", d.title ? `"${d.title}" was claimed.` : "One of your donations was claimed.");
+        } else if (d.status === "PICKEDUP") {
+          toast.success("Donation picked up", d.title ? `"${d.title}" was picked up.` : "A donation was picked up.");
+        } else if (d.status === "EXPIRED") {
+          toast.info("A donation expired", d.title ? `"${d.title}" expired.` : "A donation expired.");
+        }
       }
 
-      // 10-minute warning only if not expired yet
       if (d.status !== "EXPIRED") {
         const endISO = d.pickup_window_end;
         if (endISO) {
@@ -90,7 +94,7 @@ export default function RealtimeToasts() {
               const mins = Math.max(1, Math.floor(msLeft / 60000));
               toast.info(
                 "Pickup window ending soon",
-                d.title ? `\"${d.title}\" ends in about ${mins} minute(s).` : "A donation ends soon."
+                d.title ? `"${d.title}" ends in about ${mins} minute(s).` : "A donation ends soon."
               );
             }
           }
@@ -98,7 +102,6 @@ export default function RealtimeToasts() {
       }
     }
 
-    // Update snapshot
     prevDonationsRef.current = donationsById;
   }, [isDonor, myDonations, donationsById, now, toast]);
 
@@ -112,7 +115,7 @@ export default function RealtimeToasts() {
       if (c.status !== prev.status) {
         const title = c.donation?.title ? `\"${c.donation.title}\"` : "Your claim";
         if (c.status === "PICKEDUP") {
-          toast.success("Marked as picked up", `${title} is marked picked up.`);
+          toast.success("Pickup confirmed", `${title} is marked picked up.`);
         } else if (c.status === "TIMESUP") {
           toast.error("Claim time window ended", `${title} has timed out.`);
         } else if (c.status === "PENDING") {

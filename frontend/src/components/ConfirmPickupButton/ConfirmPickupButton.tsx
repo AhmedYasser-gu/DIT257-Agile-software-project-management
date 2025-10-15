@@ -32,7 +32,6 @@ export default function ConfirmPickupButton({
   const doConfirmPickup = async () => {
     try {
       await confirmPickup({ claim_id: claimId });
-      toast.success("Pickup confirmed!");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to confirm pickup";
       toast.error(msg);
@@ -42,7 +41,7 @@ export default function ConfirmPickupButton({
   };
 
   if (!pickupStarted) {
-    return <p className="text-xs text-gray-500 italic mt-2 text-right">{disabledText}</p>;
+    return <p className="text-xs text-subtext italic mt-2 text-right">{disabledText}</p>;
   }
 
   return (

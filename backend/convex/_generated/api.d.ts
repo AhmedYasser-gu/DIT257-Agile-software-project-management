@@ -20,6 +20,7 @@ import type * as functions_createDonation from "../functions/createDonation.js";
 import type * as functions_createUser from "../functions/createUser.js";
 import type * as functions_expireDonations from "../functions/expireDonations.js";
 import type * as functions_getAllDonors from "../functions/getAllDonors.js";
+import type * as functions_impact from "../functions/impact.js";
 import type * as functions_listAvailableDonations from "../functions/listAvailableDonations.js";
 import type * as functions_listMyClaims from "../functions/listMyClaims.js";
 import type * as functions_listMyDonations from "../functions/listMyDonations.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "functions/createUser": typeof functions_createUser;
   "functions/expireDonations": typeof functions_expireDonations;
   "functions/getAllDonors": typeof functions_getAllDonors;
+  "functions/impact": typeof functions_impact;
   "functions/listAvailableDonations": typeof functions_listAvailableDonations;
   "functions/listMyClaims": typeof functions_listMyClaims;
   "functions/listMyDonations": typeof functions_listMyDonations;

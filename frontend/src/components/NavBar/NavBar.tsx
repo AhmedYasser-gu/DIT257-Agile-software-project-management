@@ -29,22 +29,23 @@ export default function NavBar() {
   if (hide) return null;
 
   const linksLoggedOut = [
-      { href: "/", label: "Home", exact: true },
-      { href: "/how-it-works", label: "How it works" },
+    { href: "/", label: "Home", exact: true },
+    { href: "/impact", label: "Impact" },
+    { href: "/how-it-works", label: "How it works" },
   ];
   const linksDonor = [
-      { href: "/", label: "Home", exact: true },
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/donate", label: "Post Donation" },
-      { href: "/reviews", label: "Reviews" },
-      { href: "/how-it-works", label: "How it works" },
+    { href: "/", label: "Home", exact: true },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/donate", label: "Post Donation" },
+    { href: "/reviews", label: "Reviews" },
+    { href: "/how-it-works", label: "How it works" },
   ];
   const linksReceiver = [
-      { href: "/", label: "Home", exact: true },
-      { href: "/explore", label: "Explore" },
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/reviews", label: "Reviews" },
-      { href: "/how-it-works", label: "How it works" },
+    { href: "/", label: "Home", exact: true },
+    { href: "/explore", label: "Explore" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/reviews", label: "Reviews" },
+    { href: "/how-it-works", label: "How it works" },
   ];
 
   let links = linksLoggedOut;
@@ -88,11 +89,7 @@ export default function NavBar() {
             </NavLink>
           ))}
 
-          <SignedIn>
-            {userTypeBadge}
-
-            {/* Theme toggle next to avatar */}
-            <button
+<button
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="text-xs rounded border px-2 py-1 hover:bg-muted transition"
@@ -101,6 +98,12 @@ export default function NavBar() {
             >
               {theme === "dark" ? "🌙" : "🌞"}
             </button>
+
+          <SignedIn>
+            {userTypeBadge}
+
+            {/* Theme toggle next to avatar */}
+            
 
             <UserButton userProfileUrl="/profile" afterSignOutUrl="/" />
           </SignedIn>

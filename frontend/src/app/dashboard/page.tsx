@@ -23,6 +23,24 @@ import {
   Tooltip,
 } from "recharts";
 
+const chartTooltipStyle = {
+  backgroundColor: "var(--c-card)",
+  color: "var(--c-text)",
+  borderRadius: "0.5rem",
+  border: "1px solid var(--c-border)",
+  fontSize: "12px",
+  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.2)",
+};
+
+const tooltipStyle: TooltipProps<number, string>["contentStyle"] = {
+  backgroundColor: "var(--c-card)",
+  color: "var(--c-text)",
+  borderRadius: "0.5rem",
+  border: `1px solid var(--c-border)`,
+  fontSize: "12px",
+  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.2)",
+};
+
 type DonationStatus = "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
 type ClaimStatus = "PENDING" | "PICKEDUP" | "TIMESUP" |string;
 
@@ -127,13 +145,13 @@ function StatCard({
       className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm flex flex-col`}
     >
       <div>
-        <h3 className="text-sm text-gray-700">{title}</h3>
+        <h3 className="text-sm text-subtext">{title}</h3>
 
         <p className="text-2xl font-bold">
           {formatNumber(current)} {unit}
         </p>
 
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-subtext">
           Prev: {formatNumber(previous)} {unit}
         </p>
 
@@ -149,21 +167,25 @@ function StatCard({
 
       <div className="mt-3 h-20">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <XAxis dataKey="day" hide />
-            <YAxis hide />
+          <LineChart
+            data={data}
+            margin={{ top: 6, right: 6, bottom: 0, left: 6 }}
+          >
+            <XAxis dataKey="day" hide tick={{ fill: "var(--c-subtext)" }} />
+            <YAxis hide tick={{ fill: "var(--c-subtext)" }} />
             <Tooltip
               formatter={(value: number) => [`${value}`, "Value"]}
               labelFormatter={(label: string) => `Date: ${label}`}
-              cursor={{ stroke: "#ccc", strokeDasharray: "5 5" }}
-              contentStyle={{ fontSize: "12px" }}
+              cursor={{ stroke: "var(--c-border)", strokeDasharray: "5 5" }}
+              contentStyle={chartTooltipStyle}
             />
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#2563eb"
+              stroke="var(--c-primary)"
               strokeWidth={2}
               dot={false}
+              activeDot={{ r: 4, stroke: "var(--c-primary)", strokeWidth: 2, fill: "var(--c-card)" }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -476,14 +498,14 @@ export default function Dashboard() {
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
-                className={`btn-outline ${active === "available" ? "!bg-[#4CAF50] !text-white border-transparent" : ""}`}
+                className={`btn-outline ${active === "available" ? "!bg-primary !text-white border-transparent dark:!bg-emerald-600" : ""}`}
                 onClick={() => setActive("available")}
               >
                 Available
               </button>
               <button
                 type="button"
-                className={`btn-outline ${active === "myClaims" ? "!bg-[#4CAF50] !text-white border-transparent" : ""}`}
+                className={`btn-outline ${active === "myClaims" ? "!bg-primary !text-white border-transparent dark:!bg-emerald-600" : ""}`}
                 onClick={() => setActive("myClaims")}
               >
                 My claims
@@ -722,7 +744,7 @@ export default function Dashboard() {
             {/* OPEN */}
             <section className="space-y-3">
               <div
-                className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-card cursor-pointer transition-colors hover:bg-background/70 dark:hover:bg-background/40"
                 onClick={() => setShowOpen((s) => !s)}
               >
                 <h4 className="text-lg font-semibold">
@@ -739,7 +761,7 @@ export default function Dashboard() {
                   {donorLists.OPEN.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
+                      className="rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {d.imageUrl && (
@@ -756,14 +778,14 @@ export default function Dashboard() {
                         )}
                         <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
-                          <p className="text-sm text-gray-600 line-clamp-1">
+                          <p className="text-sm text-subtext line-clamp-1">
                             Qty: {fmtQty(d.quantity)} · Category: {d.category}
                           </p>
-                          <p className="text-sm text-gray-500 line-clamp-1">
+                          <p className="text-sm text-subtext line-clamp-1">
                             Pickup: {d.pickup_window_start ? isoToDate(d.pickup_window_start) : "N/A"} → {d.pickup_window_end ? isoToDate(d.pickup_window_end) : "N/A"}
                           </p>
                           {d.description && (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            <p className="text-sm text-subtext mt-1 line-clamp-2">
                               {d.description}
                             </p>
                           )}
@@ -783,7 +805,7 @@ export default function Dashboard() {
             {/* CLAIMED */}
             <section className="space-y-3">
               <div
-                className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-card cursor-pointer transition-colors hover:bg-background/70 dark:hover:bg-background/40"
                 onClick={() => setShowClaimed((s) => !s)}
               >
                 <h4 className="text-lg font-semibold">
@@ -800,7 +822,7 @@ export default function Dashboard() {
                   {donorLists.CLAIMED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
+                      className="rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {d.imageUrl && (
@@ -817,14 +839,14 @@ export default function Dashboard() {
                         )}
                         <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
-                          <p className="text-sm text-gray-600 line-clamp-1">
+                          <p className="text-sm text-subtext line-clamp-1">
                             Qty: {fmtQty(d.quantity)} · Category: {d.category}
                           </p>
-                          <p className="text-sm text-gray-500 line-clamp-1">
+                          <p className="text-sm text-subtext line-clamp-1">
                             Pickup: {d.pickup_window_start ? isoToDate(d.pickup_window_start) : "N/A"} → {d.pickup_window_end ? isoToDate(d.pickup_window_end) : "N/A"}
                           </p>
                           {d.description && (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            <p className="text-sm text-subtext mt-1 line-clamp-2">
                               {d.description}
                             </p>
                           )}
@@ -844,7 +866,7 @@ export default function Dashboard() {
             {/* EXPIRED */}
             <section className="space-y-3">
               <div
-                className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-card cursor-pointer transition-colors hover:bg-background/70 dark:hover:bg-background/40"
                 onClick={() => setShowExpired((s) => !s)}
               >
                 <h4 className="text-lg font-semibold">
@@ -861,7 +883,7 @@ export default function Dashboard() {
                   {donorLists.EXPIRED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
+                      className="rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {d.imageUrl && (
@@ -878,14 +900,14 @@ export default function Dashboard() {
                         )}
                         <div className="donation-card-content min-w-0">
                           <h5 className="text-lg font-semibold line-clamp-1">{d.title}</h5>
-                          <p className="text-sm text-gray-600 line-clamp-1">
+                          <p className="text-sm text-subtext line-clamp-1">
                             Qty: {fmtQty(d.quantity)} · Category: {d.category}
                           </p>
-                          <p className="text-sm text-gray-500 line-clamp-1">
+                          <p className="text-sm text-subtext line-clamp-1">
                             Pickup: {d.pickup_window_start ? isoToDate(d.pickup_window_start) : "N/A"} → {d.pickup_window_end ? isoToDate(d.pickup_window_end) : "N/A"}
                           </p>
                           {d.description && (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            <p className="text-sm text-subtext mt-1 line-clamp-2">
                               {d.description}
                             </p>
                           )}
@@ -907,15 +929,15 @@ export default function Dashboard() {
               <h3 className="text-2xl font-semibold border-b pb-2">
                 Statistics
               </h3>
-              <div className="flex items-center gap-3 text-sm text-gray-600">
+              <div className="flex items-center gap-3 text-sm text-subtext">
                 <span>Showing stats for:</span>
                 {[7, 14, 30].map((d) => (
                   <button
                     key={d}
                     type="button"
                     className={`px-3 py-1 rounded-md border text-sm transition ${statsDays === d
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                      ? "bg-primary text-white border-primary"
+                      : "bg-card text-text border-border hover:bg-background"
                       }`}
                     onClick={() => setStatsDays(d)}
                   >

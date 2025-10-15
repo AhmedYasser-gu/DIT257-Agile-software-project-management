@@ -11,7 +11,7 @@ export default function HowItWorks() {
   return (
     <section className="grid gap-6">
       {/* Hero */}
-      <div className="card p-6 md:p-8 grid gap-3 md:grid-cols-[1fr_auto] items-center">
+      <div className="card p-6 md:p-8 grid gap-3 md:grid-cols-[1fr_auto] items-center bg-gradient-to-br from-emerald-50 via-white to-sky-50 dark:from-emerald-950 dark:via-zinc-950 dark:to-sky-950">
         <div className="grid gap-2">
           <h1 className="text-3xl md:text-4xl font-bold leading-tight">
             How <span className="text-[#4CAF50]">No Leftovers</span> works
@@ -23,7 +23,7 @@ export default function HowItWorks() {
           </p>
         </div>
         <div aria-hidden className="hidden md:flex items-center justify-center">
-          <div className="size-28 md:size-32 rounded-2xl bg-[#F5F5F5] grid place-items-center border border-[#E0E0E0]">
+          <div className="size-28 md:size-32 rounded-2xl bg-[#F5F5F5] grid place-items-center border border-[#E0E0E0] dark:bg-zinc-900 dark:border-zinc-700">
             <span className="text-5xl">🥗</span>
           </div>
         </div>
@@ -105,16 +105,16 @@ export default function HowItWorks() {
         <h3 className="text-xl font-semibold">Safety, quality & etiquette</h3>
         <ul className="list-disc ml-5 grid gap-2 text-sm text-subtext">
           <li>
-            <span className="text-[#212121] font-medium">Food quality:</span> Donors only post safe, consumable items. If in doubt, don’t list it.
+            <span className="text-text font-medium">Food quality:</span> Donors only post safe, consumable items. If in doubt, don’t list it.
           </li>
           <li>
-            <span className="text-[#212121] font-medium">Be on time:</span> Respect pickup windows to keep operations smooth for restaurants and charities.
+            <span className="text-text font-medium">Be on time:</span> Respect pickup windows to keep operations smooth for restaurants and charities.
           </li>
           <li>
-            <span className="text-[#212121] font-medium">Be respectful:</span> Treat staff and other receivers kindly; we’re all here to reduce waste.
+            <span className="text-text font-medium">Be respectful:</span> Treat staff and other receivers kindly; we’re all here to reduce waste.
           </li>
           <li>
-            <span className="text-[#212121] font-medium">Privacy:</span> We store minimal data. Your account details are handled securely via Clerk.
+            <span className="text-text font-medium">Privacy:</span> We store minimal data. Your account details are handled securely via Clerk.
           </li>
         </ul>
         <div className="text-xs text-subtext">
@@ -172,9 +172,9 @@ function StepCard({
   text: string;
 }) {
   return (
-    <div className="card p-5">
+    <div className="card p-5 dark:border-border/60">
       <div className="flex items-center gap-2 mb-1">
-        <div className="size-7 grid place-items-center rounded-full bg-[#4CAF50] text-white text-sm font-semibold">
+        <div className="size-7 grid place-items-center rounded-full bg-[#4CAF50] text-white text-sm font-semibold dark:bg-emerald-600">
           {number}
         </div>
         <div className="font-medium">{title}</div>
@@ -201,7 +201,7 @@ function Tile({
   cta: string;
 }) {
   return (
-    <div className="card p-5 grid gap-2">
+    <div className="card p-5 grid gap-2 dark:border-border/60">
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>{emoji}</span>
         <div className="font-medium">{title}</div>
@@ -217,7 +217,7 @@ function Tile({
 function ReceiverGuide() {
   return (
     <div className="grid md:grid-cols-2 gap-4">
-      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0]">
+      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0] dark:bg-zinc-900 dark:border-zinc-700">
         <h4 className="font-semibold mb-2">🎯 What you can do</h4>
         <ul className="grid gap-2 text-sm text-subtext list-disc ml-5">
           <li>Create an account as <b>Receiver</b> (individual or charity).</li>
@@ -226,7 +226,7 @@ function ReceiverGuide() {
           <li>Arrive on time and confirm pickup with the donor.</li>
         </ul>
       </div>
-      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0]">
+      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0] dark:bg-zinc-900 dark:border-zinc-700">
         <h4 className="font-semibold mb-2">✅ Tips for a smooth pickup</h4>
         <ul className="grid gap-2 text-sm text-subtext list-disc ml-5">
           <li>Bring a bag/container if needed.</li>
@@ -242,7 +242,7 @@ function ReceiverGuide() {
 function DonorGuide() {
   return (
     <div className="grid md:grid-cols-2 gap-4">
-      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0]">
+      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0] dark:bg-zinc-900 dark:border-zinc-700">
         <h4 className="font-semibold mb-2">🏪 What you can do</h4>
         <ul className="grid gap-2 text-sm text-subtext list-disc ml-5">
           <li>Register as <b>Donor</b> and add your business details.</li>
@@ -251,7 +251,7 @@ function DonorGuide() {
           <li>Items auto‑expire after the window closes.</li>
         </ul>
       </div>
-      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0]">
+      <div className="rounded-lg bg-[#F5F5F5] p-4 border border-[#E0E0E0] dark:bg-zinc-900 dark:border-zinc-700">
         <h4 className="font-semibold mb-2">📌 Posting best practices</h4>
         <ul className="grid gap-2 text-sm text-subtext list-disc ml-5">
           <li>Be specific: include portion sizes or rough counts.</li>
@@ -266,7 +266,7 @@ function DonorGuide() {
 
 function Faq({ q, children }: { q: string; children: React.ReactNode }) {
   return (
-    <details className="rounded-lg border border-[#E0E0E0] bg-white p-4 open:shadow-sm">
+    <details className="rounded-lg border border-[#E0E0E0] bg-white p-4 open:shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
       <summary className="cursor-pointer list-none font-medium">
         {q}
       </summary>
