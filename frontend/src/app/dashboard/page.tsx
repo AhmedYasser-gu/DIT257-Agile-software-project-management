@@ -11,6 +11,7 @@ import ConfirmDialog from "@/components/Modal/ConfirmDialog";
 import DetailsDialog from "@/components/Modal/DetailsDialog";
 import { useToast } from "@/components/Toast/ToastContext";
 import ConfirmPickupButton from "@/components/ConfirmPickupButton/ConfirmPickupButton";
+import isoToDate from "@/components/isoToDate/isoToDate";
 
 // Charts (donor stats)
 import {
@@ -560,7 +561,7 @@ export default function Dashboard() {
                               {d.category} · Qty: {fmtQty(d.quantity)} · {d.donor?.business_name ?? "Unknown donor"}
                             </div>
                             <div className="text-xs text-subtext line-clamp-2 break-anywhere">
-                              Pickup: {d.pickup_window_start} → {d.pickup_window_end}
+                              Pickup: {d.pickup_window_start ? isoToDate(d.pickup_window_start) : "N/A"} → {d.pickup_window_end ? isoToDate(d.pickup_window_end) : "N/A"}
                             </div>
                             {d.description && (
                               <div className="text-sm line-clamp-2 break-anywhere">{d.description}</div>
