@@ -26,7 +26,7 @@ export default function ReviewsPage() {
                   {donor.business_name}
                 </h2>
                 <p
-                  className="text-gray-600 truncate max-w-full overflow-hidden text-ellipsis"
+                  className="text-gray-600 dark:text-gray-300 truncate max-w-full overflow-hidden text-ellipsis"
                   title={donor.address}
                 >
                   {donor.address}
@@ -38,13 +38,13 @@ export default function ReviewsPage() {
                     <p className="font-bold text-lg">
                       ⭐ {donor.avgRating.toFixed(1)}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-300">
                       ({donor.reviewCount} review
                       {donor.reviewCount !== 1 && "s"})
                     </p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-500">No reviews yet</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">No reviews yet</p>
                 )}
               </div>
             </div>

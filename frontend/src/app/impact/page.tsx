@@ -129,7 +129,7 @@ function StatCard({ title, unit, current, previous, gradient, data }: StatCardPr
     >
       <div>
         <h3 className="text-sm text-gray-700">{title}</h3>
-        <p className="text-2xl font-bold">
+        <p className="text-2xl font-bold dark:text-gray-800">
           {formatNumber(current)} {unit}
         </p>
         <p className="text-xs text-gray-600">
@@ -264,7 +264,7 @@ export default function ImpactPage() {
             </p>
           </div>
           <div aria-hidden className="hidden md:flex items-center justify-center">
-            <div className="size-28 md:size-32 rounded-2xl bg-[#F5F5F5] grid place-items-center border border-[#E0E0E0]">
+            <div className="size-28 md:size-32 rounded-2xl bg-[#F5F5F5] dark:bg-gray-300 grid place-items-center border border-[#E0E0E0]">
               <span className="text-5xl">🌍</span>
             </div>
           </div>
