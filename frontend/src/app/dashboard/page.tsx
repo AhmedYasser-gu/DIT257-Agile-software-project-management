@@ -31,10 +31,22 @@ const chartTooltipStyle = {
   fontSize: "12px",
   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.2)",
 };
-
-
+const statusCardColors = {
+  OPEN: `
+    from-green-50 to-green-100 border-green-200
+    dark:from-emerald-800/60 dark:to-emerald-900/50 dark:border-emerald-700
+  `,
+  CLAIMED: `
+    from-amber-50 to-amber-100 border-amber-200
+    dark:from-amber-800/60 dark:to-amber-900/50 dark:border-amber-700
+  `,
+  EXPIRED: `
+    from-rose-50 to-rose-100 border-rose-200
+    dark:from-rose-900/40 dark:to-rose-800/40 dark:border-rose-700
+  `,
+};
 type DonationStatus = "AVAILABLE" | "CLAIMED" | "PICKEDUP" | "EXPIRED" | string;
-type ClaimStatus = "PENDING" | "PICKEDUP" | "TIMESUP" |string;
+type ClaimStatus = "PENDING" | "PICKEDUP" | "TIMESUP" | string;
 
 type DonorMini = { _id: string; business_name: string; address?: string };
 type DonationRow = {
@@ -134,7 +146,12 @@ function StatCard({
 
   return (
     <div
-      className={`rounded-xl bg-gradient-to-br ${colorFrom} ${colorTo} p-4 shadow-sm flex flex-col`}
+      className={`
+    rounded-xl p-4 shadow-sm flex flex-col
+    bg-gradient-to-br ${colorFrom} ${colorTo}
+    dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-700
+    text-gray-900 dark:text-gray-100
+  `}
     >
       <div>
         <h3 className="text-sm text-subtext">{title}</h3>
@@ -147,14 +164,16 @@ function StatCard({
           Prev: {formatNumber(previous)} {unit}
         </p>
 
-        {percent !== null && (
-          <p
-            className={`mt-1 text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"
-              }`}
-          >
-            {isUp ? "▲" : "▼"} {percent}%
-          </p>
-        )}
+        <div className="h-5 mt-1">
+          {percent !== null && (
+            <p
+              className={`text-sm font-medium leading-none ${isUp ? "text-green-600" : "text-red-600"
+                }`}
+            >
+              {isUp ? "▲" : "▼"} {percent}%
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 h-20">
@@ -629,13 +648,13 @@ export default function Dashboard() {
                             {c.donation.description}
                           </div>
                         )}
-                        {c.status === "PENDING" &&(
-                        <div className="flex justify-end">
+                        {c.status === "PENDING" && (
+                          <div className="flex justify-end">
                             <ConfirmPickupButton
                               claimId={c._id}
                               pickupWindowStart={c.donation?.pickup_window_start}
                             />
-                        </div>
+                          </div>
                         )}
                       </li>
                     ))}
@@ -723,7 +742,7 @@ export default function Dashboard() {
                   {donorLists.OPEN.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
+                      className={`rounded-xl border bg-gradient-to-br ${statusCardColors.OPEN} p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden`}
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {d.imageUrl && (
@@ -784,7 +803,7 @@ export default function Dashboard() {
                   {donorLists.CLAIMED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
+                      className={`rounded-xl border bg-gradient-to-br ${statusCardColors.CLAIMED} p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden`}
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {d.imageUrl && (
@@ -845,7 +864,7 @@ export default function Dashboard() {
                   {donorLists.EXPIRED.map((d) => (
                     <div
                       key={d._id}
-                      className="rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden"
+                      className={`rounded-xl border bg-gradient-to-br ${statusCardColors.EXPIRED} p-4 shadow-sm hover:shadow-md transition donation-card overflow-hidden`}
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         {d.imageUrl && (
